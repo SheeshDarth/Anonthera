@@ -80,17 +80,24 @@ export default function Chat({
   const [showLangSheet, setShowLangSheet] = useState(false);
   const [autoPlayTTS, setAutoPlayTTS]     = useState(false);
   const [showMenu, setShowMenu]           = useState(false);
+  const [isVoiceMode, setIsVoiceMode]     = useState(false);
   const endRef     = useRef(null);
   const pendingRef = useRef(false);
 
   const { sendMessage, isLoading } = useAI(language, user);
-  const { speak, stop, isSpeaking } = useTTS();
+  const { speak, stop: stopTTS, isSpeaking } = useTTS();
 
-  const onTranscript = useCallback((text) => {
-    setInput((prev) => (prev ? `${prev} ${text}` : text));
-  }, []);
   const { isListening, startListening, stopListening, waveData, isSupported: voiceSupported } =
-    useVoice(language.code, onTranscript);
+    useVoice(language.code, (text) => {
+      if (isVoiceMode) {
+        // Auto-send in voice mode
+        if (text.trim() && !isLoading) {
+          handleSend(text.trim());
+        }
+      } else {
+        setInput((prev) => (prev ? `${prev} ${text}` : text));
+      }
+    });
 
   // Scroll
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
@@ -114,32 +121,53 @@ export default function Chat({
     } catch (e) { console.error(e); }
   };
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isLoading || pendingRef.current) return;
+  const handleSend = useCallback(async (textOverride = null) => {
+    const userText = typeof textOverride === 'string' ? textOverride : input.trim();
+    if (!userText || isLoading || pendingRef.current) return;
+    
     pendingRef.current = true;
-    const userText = input.trim();
     const newCount = userMsgCount + 1;
     setUserMsgCount(newCount);
-    setInput('');
+    if (!textOverride) setInput('');
 
     const userMsg = { id: makeId(), role: 'user', text: userText };
     let historySnapshot = [];
     setMessages((prev) => { historySnapshot = [...prev, userMsg]; return historySnapshot; });
 
     try {
+      if (isVoiceMode) stopListening(); // Briefly stop listening while AI thinks
       await new Promise((r) => setTimeout(r, 30));
       const aiText = await sendMessage(userText, historySnapshot);
       if (!aiText) return;
       if (detectCrisis(userText) || detectCrisis(aiText)) setShowSOS(true);
       const nudge = newCount % 4 === 0 && !detectCrisis(aiText);
       setMessages((prev) => [...prev, { id: makeId(), role: 'assistant', text: aiText, nudge }]);
-      if (autoPlayTTS) speak(aiText, language.code);
+      
+      if (autoPlayTTS || isVoiceMode) {
+        // In voice mode, we want continuous conversation: auto-start mic after TTS finishes
+        speak(aiText, language.code, isVoiceMode ? () => {
+            if (!pendingRef.current) startListening();
+        } : null);
+      }
     } catch (e) { console.error(e); }
     finally { pendingRef.current = false; }
-  }, [input, isLoading, userMsgCount, sendMessage, autoPlayTTS, speak, language.code]);
+  }, [input, isLoading, userMsgCount, sendMessage, autoPlayTTS, isVoiceMode, speak, language.code, stopListening, startListening]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  const toggleVoiceMode = () => {
+    if (!isVoiceMode) {
+      setIsVoiceMode(true);
+      if (!isListening) startListening();
+      showToast("Entering Voice Mode 🎙️");
+    } else {
+      setIsVoiceMode(false);
+      stopListening();
+      stopTTS();
+      showToast("Returned to Text Chat 💬");
+    }
   };
 
   return (
@@ -158,17 +186,34 @@ export default function Chat({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+          {voiceSupported && (
+            <button
+              onClick={toggleVoiceMode}
+              title={isVoiceMode ? 'Switch to Chat' : 'Switch to Voice Mode'}
+              style={{
+                background: isVoiceMode ? 'var(--brand)' : 'rgba(255,245,235,0.06)',
+                border: '1px solid rgba(255,245,235,0.1)', cursor: 'pointer',
+                borderRadius: '16px', padding: '6px 12px', color: isVoiceMode ? '#fff' : 'var(--text-primary)',
+                fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'all 0.2s',
+              }}
+            >
+              🎙️ {isVoiceMode ? 'Voice' : 'Chat'}
+            </button>
+          )}
           <button onClick={() => setShowLangSheet(true)} className="lang-pill" style={{ border: 'none', cursor: 'pointer', fontSize: 12 }}>
             <span>{language.flag}</span>
             <span>{language.native}</span>
           </button>
-          <button
-            onClick={() => setAutoPlayTTS((t) => !t)}
-            title={autoPlayTTS ? 'Auto-speak ON' : 'Auto-speak OFF'}
-            style={{ width: 30, height: 30, border: 'none', cursor: 'pointer', borderRadius: '50%', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: autoPlayTTS ? 'var(--brand-dim)' : 'transparent', color: autoPlayTTS ? 'var(--brand-soft)' : 'var(--text-muted)' }}
-          >
-            {autoPlayTTS ? '🔊' : '🔇'}
-          </button>
+          {!isVoiceMode && (
+            <button
+              onClick={() => setAutoPlayTTS((t) => !t)}
+              title={autoPlayTTS ? 'Auto-speak ON' : 'Auto-speak OFF'}
+              style={{ width: 30, height: 30, border: 'none', cursor: 'pointer', borderRadius: '50%', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: autoPlayTTS ? 'var(--brand-dim)' : 'transparent', color: autoPlayTTS ? 'var(--brand-soft)' : 'var(--text-muted)' }}
+            >
+              {autoPlayTTS ? '🔊' : '🔇'}
+            </button>
+          )}
           <div className="anon-id-chip">{anonId}</div>
           <button onClick={() => setShowMenu((s) => !s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, padding: '0 2px' }}>⋮</button>
           {showMenu && (
@@ -181,17 +226,39 @@ export default function Chat({
 
       {showSOS && <SOSBanner onOpenHelp={onOpenHelp} onDismiss={() => setShowSOS(false)} />}
 
-      {/* ── Messages ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px 4px' }} onClick={() => showMenu && setShowMenu(false)}>
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} languageCode={language.code} onPeerNudge={onPeerNudge} />
-        ))}
-        {isLoading && <TypingIndicator />}
-        <div ref={endRef} />
-      </div>
+      {/* ── Messages or Voice UI ── */}
+      {isVoiceMode ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{
+            width: 140, height: 140, borderRadius: '50%',
+            background: isSpeaking ? 'radial-gradient(circle, var(--brand) 0%, transparent 80%)' : 'radial-gradient(circle, rgba(139,108,193,0.2) 0%, transparent 80%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 40,
+            animation: isSpeaking || isListening ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
+            boxShadow: isSpeaking ? '0 0 40px var(--brand)' : 'none',
+            transition: 'all 0.4s ease'
+          }}>
+            <span style={{ fontSize: 64 }}>{isSpeaking ? '🤖' : (isListening ? '🎙️' : '💬')}</span>
+          </div>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+            {isLoading ? 'Thinking...' : isSpeaking ? 'Speaking...' : isListening ? 'Listening...' : 'Voice Mode'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 15, textAlign: 'center', maxWidth: 280 }}>
+            {isListening ? 'Speak naturally, I am listening.' : 'Talk to me just like a friend.'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 12px 4px' }} onClick={() => showMenu && setShowMenu(false)}>
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} languageCode={language.code} onPeerNudge={onPeerNudge} />
+          ))}
+          {isLoading && <TypingIndicator />}
+          <div ref={endRef} />
+        </div>
+      )}
 
-      {/* ── Voice ── */}
-      {isListening && (
+      {/* ── Voice (Text Mode) ── */}
+      {!isVoiceMode && isListening && (
         <div style={{ padding: '8px 14px', background: 'rgba(155,114,207,0.06)', borderTop: '1px solid rgba(155,114,207,0.15)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <div className="waveform-bars">
             {waveData.map((h, i) => <div key={i} className="wave-bar" style={{ height: `${Math.max(5, h * 0.22)}px` }} />)}
@@ -202,33 +269,56 @@ export default function Chat({
       )}
 
       {/* ── Input ── */}
-      <div style={{
-        padding: '8px 12px', paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
-        background: 'rgba(15,13,21,0.96)', borderTop: '1px solid rgba(255,250,243,0.05)',
-        display: 'flex', gap: 9, alignItems: 'flex-end', flexShrink: 0,
-        marginBottom: 'var(--nav-height)',
-      }}>
-        {voiceSupported && (
-          <button className={`mic-btn ${isListening ? 'recording' : ''}`} onClick={isListening ? stopListening : startListening}>
-            <span style={{ fontSize: 18 }}>{isListening ? '⏹' : '🎤'}</span>
+      {!isVoiceMode && (
+        <div style={{
+          padding: '8px 12px', paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
+          background: 'rgba(15,13,21,0.96)', borderTop: '1px solid rgba(255,250,243,0.05)',
+          display: 'flex', gap: 9, alignItems: 'flex-end', flexShrink: 0,
+          marginBottom: 'var(--nav-height)',
+        }}>
+          {voiceSupported && (
+            <button className={`mic-btn ${isListening ? 'recording' : ''}`} onClick={isListening ? stopListening : startListening}>
+              <span style={{ fontSize: 18 }}>{isListening ? '⏹' : '🎤'}</span>
+            </button>
+          )}
+          <textarea
+            className="chat-input" value={input}
+            onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+            placeholder="Type or speak…" rows={1}
+            style={{ resize: 'none', maxHeight: 96, overflowY: 'auto', paddingTop: 12, paddingBottom: 12 }}
+            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px'; }}
+          />
+          <button className="btn-primary" onClick={() => handleSend()} disabled={!input.trim() || isLoading} style={{ padding: '12px 16px', fontSize: 17, flexShrink: 0 }}>
+            {isLoading ? <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block', fontSize: 16 }}>⟳</span> : '↑'}
           </button>
-        )}
-        <textarea
-          className="chat-input" value={input}
-          onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-          placeholder="Type or speak…" rows={1}
-          style={{ resize: 'none', maxHeight: 96, overflowY: 'auto', paddingTop: 12, paddingBottom: 12 }}
-          onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px'; }}
-        />
-        <button className="btn-primary" onClick={handleSend} disabled={!input.trim() || isLoading} style={{ padding: '12px 16px', fontSize: 17, flexShrink: 0 }}>
-          {isLoading ? <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block', fontSize: 16 }}>⟳</span> : '↑'}
-        </button>
-      </div>
+        </div>
+      )}
+      
+      {/* ── Voice Wave Panel for Voice Mode ── */}
+      {isVoiceMode && (
+         <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginBottom: 'var(--nav-height)', background: 'var(--bg-card)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="waveform-bars" style={{ gap: 8, height: 60, alignItems: 'center' }}>
+              {waveData.map((h, i) => <div key={i} className="wave-bar" style={{ width: 6, height: `${Math.max(10, h * 0.4)}px`, background: isSpeaking ? 'var(--brand)' : 'var(--brand-soft)' }} />)}
+            </div>
+            
+            <button 
+              className="btn-primary" 
+              onClick={isListening ? stopListening : startListening}
+              style={{
+                borderRadius: '50%', width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isListening ? 'var(--danger)' : 'var(--brand)',
+                boxShadow: isListening ? '0 4px 16px rgba(239,68,68,0.4)' : '0 4px 16px rgba(139,108,193,0.4)',
+              }}
+            >
+              <span style={{ fontSize: 24 }}>{isListening ? '⏹' : '🎤'}</span>
+            </button>
+         </div>
+      )}
 
       {showLangSheet && (
         <LanguageSheet
           current={language}
-          onSelect={(l) => { onLanguageChange?.(l); showToast(`${l.native} ${l.flag}`); if (isSpeaking) stop(); }}
+          onSelect={(l) => { onLanguageChange?.(l); showToast(`${l.native} ${l.flag}`); if (isSpeaking) stopTTS(); }}
           onClose={() => setShowLangSheet(false)}
         />
       )}

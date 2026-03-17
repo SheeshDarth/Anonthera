@@ -65,7 +65,7 @@ export const useTTS = () => {
     return voices.find((v) => v.lang.startsWith('en')) || voices[0];
   }, []);
 
-  const speak = useCallback(async (text, languageCode) => {
+  const speak = useCallback(async (text, languageCode, onFinish) => {
     if (!window.speechSynthesis || !text) return;
     window.speechSynthesis.cancel();
     queueRef.current = [];
@@ -89,6 +89,7 @@ export const useTTS = () => {
     const speakNext = (index) => {
       if (index >= sentences.length) {
         setIsSpeaking(false);
+        if (onFinish) onFinish();
         return;
       }
 
@@ -106,6 +107,7 @@ export const useTTS = () => {
       utter.onerror = (e) => {
         console.warn('[TTS] error:', e.error);
         setIsSpeaking(false);
+        if (onFinish) onFinish();
       };
 
       activeRef.current = utter;
