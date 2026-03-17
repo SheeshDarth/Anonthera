@@ -65,18 +65,26 @@ export const useVoice = (languageCode, onTranscript) => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const reco = new SpeechRecognition();
-            reco.continuous = true;
+            reco.continuous = false; // continuous mode breaks input tracking easily
             reco.interimResults = true;
             reco.lang = SARVAM_LANG_MAP[languageCode] || 'en-IN';
             
             reco.onresult = (event) => {
                 let currentInterim = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                for (let i = 0; i < event.results.length; ++i) {
                     currentInterim += event.results[i][0].transcript;
                 }
                 setInterimText(currentInterim);
             };
-            reco.onerror = (e) => { if (import.meta.env.DEV) console.log('[useVoice] Reco error:', e); };
+            
+            reco.onend = () => {
+                // Restart only if we are still fundamentally recording
+                if (mediaRecorderRef.current?.state === 'recording') {
+                   try { reco.start(); } catch(e){}
+                }
+            };
+
+            reco.onerror = (e) => { if (import.meta.env.DEV) console.log('[useVoice] Reco error:', e.error); };
             
             speechRecoRef.current = reco;
             try { reco.start(); } catch(e){}

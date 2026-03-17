@@ -62,15 +62,21 @@ const VoiceVisualizer = ({ stream, isSpeaking, small = false }) => {
        ));
     }
 
-    // Real audio data from mic
-    return waveData.map((h, i) => (
-      <div key={i} className="wave-bar" style={{ 
-        width: small ? 3 : 6, 
-        height: `${Math.max(small ? 4 : 10, h * (small ? 0.2 : 0.4))}px`, 
-        background: stream ? 'var(--danger)' : 'var(--brand-soft)',
-        transition: 'height 0.05s ease'
-      }} />
-    ));
+    // Real audio data from mic with noise gate applied
+    const maxVal = Math.max(...waveData);
+    const isSilent = maxVal < 10; // Treat low background hum as silence
+
+    return waveData.map((rawH, i) => {
+      const h = isSilent ? 0 : rawH;
+      return (
+        <div key={i} className="wave-bar" style={{ 
+          width: small ? 3 : 6, 
+          height: `${Math.max(small ? 4 : 10, h * (small ? 0.2 : 0.4))}px`, 
+          background: stream ? 'var(--danger)' : 'var(--brand-soft)',
+          transition: 'height 0.05s ease'
+        }} />
+      );
+    });
   };
 
   return (
