@@ -1,0 +1,166 @@
+﻿
+> anonthera@0.0.0 lint
+> eslint .
+
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\scripts\addMockUsers.js
+  68:3  error  'process' is not defined  no-undef
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\App.jsx
+   7:17  error  'showToast' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                no-unused-vars
+  17:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  65:17  error  Empty block statement                                                                                                           no-empty
+  80:99  error  Empty block statement                                                                                                           no-empty
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\ErrorBoundary.jsx
+   9:35  error  'error' is defined but never used  no-unused-vars
+  48:12  error  'process' is not defined           no-undef
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\Logo.jsx
+  3:34  error  'darkMode' is assigned a value but never used  no-unused-vars
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\Mood.jsx
+   11:3  error  'updateDoc' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                no-unused-vars
+  112:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  110 |   useEffect(() => {
+  111 |     if (!todayEntry) return;
+> 112 |     setEnergy(todayEntry.energy ?? 3);
+      |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  113 |     setWorry(todayEntry.worry ?? '');
+  114 |     setGratitude(todayEntry.gratitude ?? '');
+  115 |     setEditing(false);  react-hooks/set-state-in-effect
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\Onboarding.jsx
+  45:6  warning  React Hook React.useEffect has a missing dependency: 'handleNext'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\Peer.jsx
+   15:3   error    'writeBatch' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       no-unused-vars
+  100:9   error    Error: Cannot access variable before it is declared
+
+`handleLeave` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+   98 |     if (chatStartTime && !isReported) {
+   99 |       chatTimeoutRef.current = setTimeout(() => {
+> 100 |         handleLeave();
+      |         ^^^^^^^^^^^ `handleLeave` accessed before it is declared
+  101 |         setMatchStatus('Chat session ended after 30 minutes for safety.');
+  102 |       }, CHAT_TIMEOUT_MS);
+  103 |     }
+
+  251 |   };
+  252 |
+> 253 |   const handleLeave = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 254 |     if (!chatId) return;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 255 |     
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 283 |     }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 284 |   };
+      | ^^^^^ `handleLeave` is declared here
+  285 |
+  286 |   if (!user || user.isAnonymous) {
+  287 |     return (  react-hooks/immutability
+  110:6   warning  React Hook useEffect has a missing dependency: 'handleLeave'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+  335:78  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  333 |               {chatStartTime && (
+  334 |                 <span className="hint">
+> 335 |                   Session ends in {Math.max(0, Math.ceil((CHAT_TIMEOUT_MS - (Date.now() - chatStartTime)) / 60000))} minutes
+      |                                                                              ^^^^^^^^^^ Cannot call impure function
+  336 |                 </span>
+  337 |               )}
+  338 |             </div>                                                                                                                                                                                           react-hooks/purity
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\auth\LoginPage.jsx
+  53:14  error  'e' is defined but never used  no-unused-vars
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\chat\Chat.jsx
+  69:3  error  'struggles' is defined but never used  no-unused-vars
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\chat\MessageBubble.jsx
+  11:22  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+   9 |   // Track when TTS ends
+  10 |   useEffect(() => {
+> 11 |     if (!isSpeaking) setLocalSpeaking(false);
+     |                      ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  12 |   }, [isSpeaking]);
+  13 |
+  14 |   const handleSpeak = () => {  react-hooks/set-state-in-effect
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\chat\SOSBanner.jsx
+  4:87  error  Empty block statement  no-empty
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\chat\VoiceVisualizer.jsx
+  15:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  13 |         audioCtxRef.current = null;
+  14 |       }
+> 15 |       setWaveData(Array(small ? 15 : 40).fill(0));
+     |       ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  16 |       return;
+  17 |     }
+  18 |  react-hooks/set-state-in-effect
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\mood\MoodTab.jsx
+  36:40  error  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+  47:22  error  Error: Cannot access variable before it is declared
+
+`getMonday` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  45 |     if (cached) {
+  46 |       const { text, date } = JSON.parse(cached);
+> 47 |       const monday = getMonday();
+     |                      ^^^^^^^^^ `getMonday` accessed before it is declared
+  48 |       if (date === monday) return text;
+  49 |     }
+  50 |     return null;
+
+  51 |   });
+  52 |
+> 53 |   function getMonday() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^
+> 54 |     const d = new Date();
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 55 |     const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 56 |     return new Date(d.setDate(diff)).toISOString().split('T')[0];
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 57 |   }
+     | ^^^^ `getMonday` is declared here
+  58 |
+  59 |   const chartData = last7();
+  60 |   const gratitudeLog = entries.filter((e) => e.gratitude).slice(0, 30);  react-hooks/immutability
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\shared\Toast.jsx
+  4:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\hooks\useTTS.js
+  40:113  error  Empty block statement  no-empty
+
+Γ£û 24 problems (22 errors, 2 warnings)
+

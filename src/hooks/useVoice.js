@@ -1,178 +1,157 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
-const SARVAM_LANG_MAP = {
-  'en': 'en-IN',
-  'hi': 'hi-IN',
-  'ta': 'ta-IN',
-  'te': 'te-IN',
-  'kn': 'kn-IN',
+const LANG_MAP = {
+  en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN', te: 'te-IN', kn: 'kn-IN',
 };
 
-const getSupportedMimeType = () => {
-    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', 'audio/wav'];
-    for (const type of types) {
-        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
-            return type;
-        }
-    }
-    return ''; // fallback
+// Generates fake sine wave data for the visualizer if actual microphone capture is blocked
+const generateFakeWave = () => {
+  const bars = [];
+  const time = Date.now() / 200;
+  for (let i = 0; i < 40; i++) {
+    bars.push(Math.max(10, Math.abs(Math.sin(time + i * 0.2)) * 100 + Math.random() * 20));
+  }
+  return bars;
 };
 
-export const useVoice = (languageCode, onTranscript) => {
+export const useVoice = (langCode, onTranscript) => {
   const [isListening, setIsListening] = useState(false);
-  const [interimText, setInterimText] = useState('');
-  const [activeStream, setActiveStream] = useState(null);
+  const [waveData, setWaveData]       = useState(Array(40).fill(0));
+
+  const langRef      = useRef(langCode);
+  const cbRef        = useRef(onTranscript);
+  const recognitionRef = useRef(null);
   
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const streamRef = useRef(null);
-  const speechRecoRef = useRef(null);
+  const animRef      = useRef(null);
+  const fakeAnimRef  = useRef(null);
+  const ctxRef       = useRef(null);
+  const streamRef    = useRef(null);
 
-  const isSupported = typeof window !== 'undefined' && 
-                      !!navigator.mediaDevices?.getUserMedia && 
-                      typeof MediaRecorder !== 'undefined';
+  // keep refs fresh without recreating callbacks
+  useEffect(() => { langRef.current = langCode; }, [langCode]);
+  useEffect(() => { cbRef.current   = onTranscript; }, [onTranscript]);
 
-  const cleanup = useCallback(() => {
-    if (speechRecoRef.current) {
-        try { speechRecoRef.current.stop(); } catch(e){}
-        speechRecoRef.current = null;
+  const isSupported =
+    typeof window !== 'undefined' &&
+    !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  /* ── cleanup helper ── */
+  const teardownWave = useCallback(() => {
+    if (animRef.current) { cancelAnimationFrame(animRef.current); animRef.current = null; }
+    if (fakeAnimRef.current) { clearInterval(fakeAnimRef.current); fakeAnimRef.current = null; }
+    if (ctxRef.current && ctxRef.current.state !== 'closed') {
+      ctxRef.current.close().catch(() => {});
+      ctxRef.current = null;
     }
     if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        setActiveStream(null);
+      streamRef.current.getTracks().forEach(t => {
+        t.stop();
+        t.enabled = false;
+      });
+      streamRef.current = null;
     }
-    setInterimText('');
+    setWaveData(Array(40).fill(0));
   }, []);
 
-  useEffect(() => {
-    return cleanup;
-  }, [cleanup]);
-
-  const startListening = useCallback(async () => {
-    if (!isSupported) {
-      console.warn('Voice input requires a modern browser.');
-      return;
+  /* ── stopListening ── */
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
     }
-    cleanup();
+    setIsListening(false);
+    teardownWave();
+  }, [teardownWave]);
+
+  /* ── startListening ── */
+  const startListening = useCallback(async () => {
+    if (!isSupported) return;
+    teardownWave();
 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
-        setActiveStream(stream); // triggering re-render to pass stream to visualizer
+      // 1. Setup the Web Speech API STT first (most important)
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      
+      recognition.lang = LANG_MAP[langRef.current] || 'hi-IN';
+      recognition.interimResults = false; // Need final results only
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false; // Stop when the user stops talking
 
-        // Setup SpeechRecognition for UI interim immediately printing words
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const reco = new SpeechRecognition();
-            reco.continuous = false; // continuous mode breaks input tracking easily
-            reco.interimResults = true;
-            reco.lang = SARVAM_LANG_MAP[languageCode] || 'en-IN';
-            
-            reco.onresult = (event) => {
-                let currentInterim = '';
-                for (let i = 0; i < event.results.length; ++i) {
-                    currentInterim += event.results[i][0].transcript;
-                }
-                setInterimText(currentInterim);
-            };
-            
-            reco.onend = () => {
-                // Restart only if we are still fundamentally recording
-                if (mediaRecorderRef.current?.state === 'recording') {
-                   try { reco.start(); } catch(e){}
-                }
-            };
-
-            reco.onerror = (e) => { if (import.meta.env.DEV) console.log('[useVoice] Reco error:', e.error); };
-            
-            speechRecoRef.current = reco;
-            try { reco.start(); } catch(e){}
-        }
-
-        const mimeType = getSupportedMimeType();
-        if (import.meta.env.DEV) {
-            console.log('[useVoice] Recording started, mimeType:', mimeType);
-        }
-
-        const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-        mediaRecorderRef.current = mediaRecorder;
-        audioChunksRef.current = [];
-
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                audioChunksRef.current.push(event.data);
-            }
-        };
-
-        mediaRecorder.onstop = async () => {
-            setIsListening(false);
-            const apiKey = import.meta.env.VITE_SARVAM_KEY;
-            const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
-            
-            // Capture interim fallback in case Sarvam fails 
-            const finalInterim = interimText;
-            cleanup();
-            
-            if (audioBlob.size === 0) {
-                onTranscript('');
-                return;
-            }
-
-            if (!apiKey) {
-                console.error('[useVoice] Missing VITE_SARVAM_KEY in environment variables.');
-                onTranscript(finalInterim);
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('file', audioBlob, 'recording.webm');
-                formData.append('language_code', SARVAM_LANG_MAP[languageCode] || 'hi-IN');
-                formData.append('model', 'saarika:v1');
-
-                const response = await fetch('https://api.sarvam.ai/speech-to-text', {
-                    method: 'POST',
-                    headers: { 'api-subscription-key': apiKey },
-                    body: formData
-                });
-                
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-                
-                const transcript = data.transcript || '';
-                if (import.meta.env.DEV) {
-                    console.log('[useVoice] Transcript received:', transcript);
-                }
-                
-                // If Sarvam gives empty result due to silence but web API caught something, fallback
-                if (!transcript.trim() && finalInterim.trim()) {
-                   onTranscript(finalInterim.trim());
-                } else {
-                   onTranscript(transcript.trim());
-                }
-            } catch (err) {
-                if (import.meta.env.DEV) {
-                    console.log('[useVoice] ASR Error:', err);
-                }
-                onTranscript(finalInterim.trim()); // Fail gracefully with visual STT text
-            }
-        };
-
-        mediaRecorder.start();
+      recognition.onstart = () => {
+        if (import.meta.env.DEV) console.log('[useVoice] Listening using Web Speech API');
         setIsListening(true);
-    } catch (err) {
-        if (import.meta.env.DEV) console.log('[useVoice] ASR Error:', err);
+      };
+
+      recognition.onresult = (event) => {
+        const txt = event.results[0][0].transcript;
+        if (import.meta.env.DEV) console.log('[useVoice] Transcript:', txt);
+        if (txt && cbRef.current) {
+          cbRef.current(txt);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        if (import.meta.env.DEV) console.log('[useVoice] STT Error:', event.error);
+        // Ignore 'no-speech' error to prevent UI crashing, just quietly close.
+        if (event.error !== 'no-speech') {
+          console.warn('[useVoice] Handled error:', event.error);
+        }
         setIsListening(false);
-        cleanup();
-    }
-  }, [isSupported, languageCode, onTranscript, cleanup, interimText]);
+        teardownWave();
+      };
 
-  const stopListening = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-    }
-  }, []);
+      recognition.onend = () => {
+        setIsListening(false);
+        teardownWave();
+      };
 
-  return { isListening, startListening, stopListening, activeStream, interimText, isSupported };
+      recognitionRef.current = recognition;
+      recognition.start();
+
+      // 2. Setup the waveform visualizer (Microphone API)
+      // Done in a non-blocking way so STT isn't impacted if it fails.
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => {
+          streamRef.current = stream;
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AudioCtx();
+          ctxRef.current = ctx;
+          const src = ctx.createMediaStreamSource(stream);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 128; // gives 64 bins
+          analyser.smoothingTimeConstant = 0.8;
+          src.connect(analyser);
+          const freq = new Uint8Array(analyser.frequencyBinCount);
+          const step = Math.max(1, Math.floor(freq.length / 40));
+
+          const draw = () => {
+            analyser.getByteFrequencyData(freq);
+            const bars = [];
+            for (let i = 0; i < 40; i++) bars.push(freq[i * step] ?? 0);
+            setWaveData(bars);
+            animRef.current = requestAnimationFrame(draw);
+          };
+          draw();
+        })
+        .catch((err) => {
+          console.warn('[useVoice] getUserMedia failed, using fake visualizer:', err);
+          // If actual mic access fails (e.g. Chrome exclusive lock), show a fake wave animation
+          fakeAnimRef.current = setInterval(() => setWaveData(generateFakeWave()), 50);
+        });
+
+    } catch (err) {
+      if (import.meta.env.DEV) console.log('[useVoice] Critical STT error:', err);
+      setIsListening(false);
+      teardownWave();
+    }
+  }, [isSupported, teardownWave]);
+
+  useEffect(() => {
+    return () => {
+      stopListening();
+      teardownWave();
+    };
+  }, [stopListening, teardownWave]);
+
+  return { isListening, startListening, stopListening, waveData, isSupported };
 };

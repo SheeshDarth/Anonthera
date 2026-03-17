@@ -33,8 +33,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function MoodTab({ user, language, onBridgeToChat }) {
-  const { entries, todayEntry, streak, loading, saveEntry, last7 } = useMoodData(user);
+  const { entries, todayEntry, streak, saveEntry, last7 } = useMoodData(user);
   const { generateWeeklyInsight, isLoading: aiLoading } = useAI(language, user);
+
+  function getMonday() {
+    const d = new Date();
+    const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff)).toISOString().split('T')[0];
+  }
 
   const [energy, setEnergy] = useState(null);
   const [worry, setWorry] = useState('');
@@ -50,11 +56,6 @@ export default function MoodTab({ user, language, onBridgeToChat }) {
     return null;
   });
 
-  function getMonday() {
-    const d = new Date();
-    const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff)).toISOString().split('T')[0];
-  }
 
   const chartData = last7();
   const gratitudeLog = entries.filter((e) => e.gratitude).slice(0, 30);

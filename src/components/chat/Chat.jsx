@@ -9,7 +9,6 @@ import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import SOSBanner from './SOSBanner';
 import LanguageSheet from '../shared/LanguageSheet';
-import VoiceVisualizer from './VoiceVisualizer';
 import { showToast } from '../shared/Toast';
 
 const makeId = () => `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -24,32 +23,32 @@ const GREETINGS = {
     late:    "Hey, you're up late 🌙 What's on your mind?",
   },
   hi: {
-    night:   "अरे, नींद नहीं आ रही? 🌙 मैं यहाँ हूँ।",
-    morning: "सुप्रभात ☀️ आज कैसा महसूस हो रहा है?",
-    afternoon: "नमस्ते 🌿 दिन कैसा चल रहा है?",
-    evening: "शुभ संध्या 🌅 आज का दिन कैसा रहा?",
-    late:    "अरे, इतनी रात को जागे हो? 🌙 क्या चल रहा है?",
+    night:   "Arre, neend nahi aa rahi? 🌙 Main yahan hoon.",
+    morning: "Suprabhat ☀️ Aaj kaisa mahsoos ho raha hai?",
+    afternoon: "Namaste 🌿 Din kaisa chal raha hai?",
+    evening: "Shubh sandhya 🌅 Aaj ka din kaisa raha?",
+    late:    "Arre, itni raat ko jaage ho? 🌙 Kya chal raha hai?",
   },
   ta: {
-    night:   "இரவு நேரமா? 🌙 தூக்கம் வரலையா? நான் இங்கே இருக்கிறேன்.",
-    morning: "காலை வணக்கம் ☀️ இன்று எப்படி இருக்கிறீர்கள்?",
-    afternoon: "வணக்கம் 🌿 இன்றைய நாள் எப்படி போகிறது?",
-    evening: "மாலை வணக்கம் 🌅 இன்று எப்படி இருந்தது?",
-    late:    "இவ்வளவு நேரமா? 🌙 மனதில் என்ன இருக்கிறது?",
+    night:   "Iravu nerama? 🌙 Thookkam varalaiya? Naan inge irukkiren.",
+    morning: "Kaalai vanakkam ☀️ Indru eppadi irukkirirgal?",
+    afternoon: "Vanakkam 🌿 Indraya naal eppadi pogirathu?",
+    evening: "Maalai vanakkam 🌅 Indru eppadi irunthathu?",
+    late:    "Ivvalavu nerama? 🌙 Manathil enna irukkirathu?",
   },
   te: {
-    night:   "రాత్రి మెలకువగా ఉన్నారా? 🌙 నేను ఇక్కడ ఉన్నాను.",
-    morning: "శుభోదయం ☀️ ఈరోజు ఎలా ఉన్నారు?",
-    afternoon: "నమస్కారం 🌿 రోజు ఎలా జరుగుతోంది?",
-    evening: "శుభ సాయంత్రం 🌅 ఈరోజు ఎలా గడిచింది?",
-    late:    "ఇంత రాత్రి జాగారం చేస్తున్నారా? 🌙",
+    night:   "Ratri melakuvaga unnara? 🌙 Nenu ikkada unnanu.",
+    morning: "Subhodayam ☀️ Eeroju ela unnaru?",
+    afternoon: "Namaskaram 🌿 Roju ela jarugutondi?",
+    evening: "Subha sayantram 🌅 Eeroju ela gadichindi?",
+    late:    "Inta ratri jaagaram chestunnara? 🌙",
   },
   kn: {
-    night:   "ರಾತ್ರಿ ಎಚ್ಚರವಾಗಿದ್ದೀರಾ? 🌙 ನಾನು ಇಲ್ಲಿದ್ದೇನೆ.",
-    morning: "ಶುಭೋದಯ ☀️ ಇಂದು ಹೇಗಿದ್ದೀರಿ?",
-    afternoon: "ನಮಸ್ಕಾರ 🌿 ದಿನ ಹೇಗೆ ಹೋಗ್ತಿದೆ?",
-    evening: "ಶುಭ ಸಂಜೆ 🌅 ಇಂದು ಹೇಗಿತ್ತು?",
-    late:    "ಇಷ್ಟು ಹೊತ್ತು ಎಚ್ಚರ? 🌙 ಏನು ಮನಸ್ಸಲ್ಲಿ?",
+    night:   "Ratri eccharavagiddira? 🌙 Naanu illiddini.",
+    morning: "Shubhodaya ☀️ Indu hegiddiri?",
+    afternoon: "Namaskara 🌿 Dina hege hogtide?",
+    evening: "Shubha sanje 🌅 Indu hegittu?",
+    late:    "Ishtu hottu ecchara? 🌙 Eenu manassalli?",
   },
 };
 
@@ -63,17 +62,16 @@ const getGreeting = (langCode) => {
   return g.late;
 };
 
-export default function Chat({
+const Chat = ({
   language,
   user,
   anonId,
-  struggles,
   onPeerNudge,
   onOpenHelp,
   prefillText,
   onConsumePrefill,
   onLanguageChange,
-}) {
+}) => {
   const [messages, setMessages]           = useState([]);
   const [input, setInput]                 = useState('');
   const [showSOS, setShowSOS]             = useState(false);
@@ -86,60 +84,46 @@ export default function Chat({
   const pendingRef = useRef(false);
 
   const { sendMessage, isLoading } = useAI(language, user);
-  const { speak, stop: stopTTS, isSpeaking } = useTTS();
+  const { speak, stop, isSpeaking } = useTTS();
 
+  // ── Ref-based bridge so onTranscript never goes stale ──
   const handleSendRef = useRef(null);
 
+  // FIX 1 — onTranscript auto-sends when autoPlayTTS is on
   const onTranscript = useCallback((text) => {
     if (!text.trim()) return;
     setInput(text);
-    if (autoPlayTTS || isVoiceMode) {
+    if (autoPlayTTS) {
       handleSendRef.current?.(text);
     }
-  }, [autoPlayTTS, isVoiceMode]);
+  }, [autoPlayTTS]);
 
-  const { isListening, startListening, stopListening, activeStream, interimText, isSupported: voiceSupported } =
+  const { isListening, startListening, stopListening, waveData, isSupported: voiceSupported } =
     useVoice(language.code, onTranscript);
 
+  // FIX 2 — handleSendWithText (same logic as handleSend but accepts text param)
   const handleSendWithText = useCallback(async (text) => {
     if (!text.trim() || isLoading || pendingRef.current) return;
     pendingRef.current = true;
-    
+    const newCount = userMsgCount + 1;
+    setUserMsgCount(newCount);
     setInput('');
-    let newCount = 0;
-    setUserMsgCount((prev) => {
-        newCount = prev + 1;
-        return newCount;
-    });
-
     const userMsg = { id: makeId(), role: 'user', text };
-    let historySnapshot = [];
-    setMessages((prev) => { historySnapshot = [...prev, userMsg]; return historySnapshot; });
-    
+    let snap = [];
+    setMessages((prev) => { snap = [...prev, userMsg]; return snap; });
     try {
-      if (isVoiceMode) stopListening(); // Briefly stop listening while AI thinks
-      await new Promise((r) => setTimeout(r, 30));
-      const aiText = await sendMessage(text, historySnapshot);
+      await new Promise(r => setTimeout(r, 30));
+      const aiText = await sendMessage(text, snap);
       if (!aiText) return;
-      
       if (detectCrisis(text) || detectCrisis(aiText)) setShowSOS(true);
       const nudge = newCount % 4 === 0 && !detectCrisis(aiText);
-      
-      setMessages((prev) => [...prev, { id: makeId(), role: 'assistant', text: aiText, nudge }]);
-      
-      if (autoPlayTTS || isVoiceMode) {
-        speak(aiText, language.code); // Sarvam TTS fires here
-      }
-    } catch (e) { 
-      console.error(e); 
-    } finally { 
-      pendingRef.current = false; 
-    }
-  }, [isLoading, sendMessage, autoPlayTTS, isVoiceMode, speak, language.code, stopListening]);
+      setMessages(prev => [...prev, { id: makeId(), role: 'assistant', text: aiText, nudge }]);
+      if (autoPlayTTS) speak(aiText, language.code);
+    } catch (e) { console.error(e); }
+    finally { pendingRef.current = false; }
+  }, [isLoading, userMsgCount, sendMessage, autoPlayTTS, speak, language.code]);
 
-  useEffect(() => {
-    handleSendRef.current = handleSendWithText;
-  }, [handleSendWithText]);
+  useEffect(() => { handleSendRef.current = handleSendWithText; }, [handleSendWithText]);
 
   const handleSend = useCallback((textOverride = null) => {
     const text = typeof textOverride === 'string' ? textOverride : input;
@@ -159,7 +143,7 @@ export default function Chat({
     if (prefillText) { setInput(prefillText); onConsumePrefill?.(); }
   }, [prefillText, onConsumePrefill]);
 
-  // Auto-resume continuous Voice Mode if native recognition stops due to silence
+  // Auto-resume continuous Voice Mode
   useEffect(() => {
     let t;
     if (isVoiceMode && !isListening && !isLoading && !isSpeaking) {
@@ -188,12 +172,14 @@ export default function Chat({
   const toggleVoiceMode = () => {
     if (!isVoiceMode) {
       setIsVoiceMode(true);
+      setAutoPlayTTS(true);
       if (!isListening) startListening();
       showToast("Entering Voice Mode 🎙️");
     } else {
       setIsVoiceMode(false);
+      setAutoPlayTTS(false);
       stopListening();
-      stopTTS();
+      stop();
       showToast("Returned to Text Chat 💬");
     }
   };
@@ -235,7 +221,7 @@ export default function Chat({
           </button>
           {!isVoiceMode && (
             <button
-              onClick={() => setAutoPlayTTS((t) => !t)}
+              onClick={() => setAutoPlayTTS((t) => { if (t) stop(); return !t; })}
               title={autoPlayTTS ? 'Auto-speak ON' : 'Auto-speak OFF'}
               style={{ width: 30, height: 30, border: 'none', cursor: 'pointer', borderRadius: '50%', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: autoPlayTTS ? 'var(--brand-dim)' : 'transparent', color: autoPlayTTS ? 'var(--brand-soft)' : 'var(--text-muted)' }}
             >
@@ -288,10 +274,10 @@ export default function Chat({
       {/* ── Voice (Text Mode) ── */}
       {!isVoiceMode && isListening && (
         <div style={{ padding: '8px 14px', background: 'rgba(155,114,207,0.06)', borderTop: '1px solid rgba(155,114,207,0.15)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <VoiceVisualizer stream={activeStream} small={true} />
-          <span style={{ fontSize: 13, color: 'var(--brand-soft)', fontStyle: 'italic', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {interimText || 'Listening…'}
-          </span>
+          <div className="waveform-bars">
+            {waveData.map((h, i) => <div key={i} className="wave-bar" style={{ height: `${Math.max(5, h * 0.22)}px` }} />)}
+          </div>
+          <span style={{ fontSize: 12, color: 'var(--brand-soft)', fontStyle: 'italic', flex: 1 }}>Listening…</span>
           <button onClick={stopListening} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13 }}>Done ✓</button>
         </div>
       )}
@@ -305,7 +291,7 @@ export default function Chat({
           marginBottom: 'var(--nav-height)',
         }}>
           {voiceSupported && (
-            <button className={`mic-btn ${isListening ? 'recording' : ''}`} onClick={isListening ? stopListening : startListening}>
+            <button className={`mic-btn ${isListening ? 'recording' : ''}`} onClick={isListening ? stopListening : () => { stop(); startListening(); }}>
               <span style={{ fontSize: 18 }}>{isListening ? '⏹' : '🎤'}</span>
             </button>
           )}
@@ -325,18 +311,13 @@ export default function Chat({
       {/* ── Voice Wave Panel for Voice Mode ── */}
       {isVoiceMode && (
          <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginBottom: 'var(--nav-height)', background: 'var(--bg-card)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            
-            <div style={{ minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                <p style={{ color: 'var(--text-primary)', fontSize: 17, textAlign: 'center', maxWidth: '85%', fontStyle: 'italic', opacity: 0.9 }}>
-                  {isListening ? (interimText || 'Listening...') : (isSpeaking ? 'Speaking...' : '')}
-                </p>
+            <div className="waveform-bars" style={{ gap: 8, height: 60, alignItems: 'center' }}>
+              {waveData.map((h, i) => <div key={i} className="wave-bar" style={{ width: 6, height: `${Math.max(10, h * 0.4)}px`, background: isSpeaking ? 'var(--brand)' : 'var(--brand-soft)' }} />)}
             </div>
-
-            <VoiceVisualizer stream={activeStream} isSpeaking={isSpeaking} />
             
             <button 
               className="btn-primary" 
-              onClick={isListening ? stopListening : startListening}
+              onClick={isListening ? stopListening : () => { stop(); startListening(); }}
               style={{
                 borderRadius: '50%', width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: isListening ? 'var(--danger)' : 'var(--brand)',
@@ -351,10 +332,12 @@ export default function Chat({
       {showLangSheet && (
         <LanguageSheet
           current={language}
-          onSelect={(l) => { onLanguageChange?.(l); showToast(`${l.native} ${l.flag}`); if (isSpeaking) stopTTS(); }}
+          onSelect={(l) => { stop(); stopListening(); onLanguageChange?.(l); showToast(`${l.native} ${l.flag}`); }}
           onClose={() => setShowLangSheet(false)}
         />
       )}
     </div>
   );
-}
+};
+
+export default React.memo(Chat);

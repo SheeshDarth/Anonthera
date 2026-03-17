@@ -101,6 +101,16 @@ anonthera/
 └── README.md              # This file
 ```
 
+## 🏗️ Architecture & Scalability
+
+AnonThera is designed with production-readiness and high availability in mind:
+
+- **Component-Driven UI**: The React interface is heavily modularized. Features like `VoiceVisualizer`, `MessageBubble`, and `Toast` are separated and wrapped in `React.memo` to eliminate cascading re-renders.
+- **Fluid Micro-Interactions**: We utilize Framer Motion for GPU-accelerated enter/exit animations that run smoothly without blocking the main browser thread.
+- **Serverless Backend**: Firebase Authentication and Firestore scale automatically. Real-time chat subscriptions utilize strict `unsubscribes` to prevent memory leaks.
+- **Robust API Resilience**: The AI hook (`useAI`) handles rate-limits, connection drops, and empty responses gracefully by seamlessly falling back to pre-translated, localized lifelines.
+- **Voice Native**: Built-in Web Audio API integration processes microphone streams via a local `AudioContext` and dynamically draws visualizers without straining the React render cycle.
+
 ## 🛡️ Safety Features
 
 - **Content Filtering**: Automatic detection and blocking of inappropriate content

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   addDoc,
   collection,
@@ -11,8 +11,7 @@ import {
   runTransaction,
   serverTimestamp,
   updateDoc,
-  where,
-  writeBatch
+  where
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { STRUGGLE_TAGS } from '../constants';
@@ -38,7 +37,7 @@ const sanitizeMessage = (text) => {
   return text.trim().slice(0, MAX_MESSAGE_LENGTH);
 };
 
-export default function Peer({ user, anonId, struggles, onStrugglesChange, onPeerActiveChange }) {
+const Peer = ({ user, anonId, struggles, onStrugglesChange, onPeerActiveChange }) => {
   const [isAvailable, setIsAvailable] = useState(true);
   const [loadingMatch, setLoadingMatch] = useState(false);
   const [matchStatus, setMatchStatus] = useState('');
@@ -52,6 +51,13 @@ export default function Peer({ user, anonId, struggles, onStrugglesChange, onPee
   const [warningMessage, setWarningMessage] = useState('');
   const messagesEndRef = useRef(null);
   const chatTimeoutRef = useRef(null);
+
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     onPeerActiveChange(Boolean(chatId));
@@ -107,7 +113,10 @@ export default function Peer({ user, anonId, struggles, onStrugglesChange, onPee
         clearTimeout(chatTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatStartTime, isReported]);
+
+  // handleLeave used to be here
 
   const toggleStruggle = (tag) => {
     if (struggles.includes(tag)) {
@@ -332,7 +341,7 @@ export default function Peer({ user, anonId, struggles, onStrugglesChange, onPee
               <span className="hint">Also dealing with {sharedStruggle}</span>
               {chatStartTime && (
                 <span className="hint">
-                  Session ends in {Math.max(0, Math.ceil((CHAT_TIMEOUT_MS - (Date.now() - chatStartTime)) / 60000))} minutes
+                  Session ends in {Math.max(0, Math.ceil((CHAT_TIMEOUT_MS - (now - chatStartTime)) / 60000))} minutes
                 </span>
               )}
             </div>
@@ -383,4 +392,6 @@ export default function Peer({ user, anonId, struggles, onStrugglesChange, onPee
       )}
     </section>
   );
-}
+};
+
+export default React.memo(Peer);

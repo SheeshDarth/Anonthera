@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -50,11 +52,15 @@ export default function LoginPage({ onSignedIn }) {
     try {
       await confirmResult.confirm(otp);
       onSignedIn?.();
-    } catch (e) { setError('Invalid OTP. Try again.'); } finally { setLoading(''); }
+    } catch { setError('Invalid OTP. Try again.'); } finally { setLoading(''); }
   };
 
   return (
-    <div style={{
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      transition={{ duration: 0.5 }}
+      style={{
       minHeight: '100dvh',
       background: 'var(--bg)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -62,7 +68,12 @@ export default function LoginPage({ onSignedIn }) {
       position: 'relative', overflow: 'hidden',
     }}>
       {/* Hero illustration */}
-      <div style={{ width: '100%', maxWidth: 360, marginBottom: 20 }}>
+      <motion.div 
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.6 }}
+        style={{ width: '100%', maxWidth: 360, marginBottom: 20 }}
+      >
         <img
           src="/hero.png"
           alt="A peaceful moment of reflection"
@@ -72,32 +83,52 @@ export default function LoginPage({ onSignedIn }) {
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
           }}
         />
-      </div>
+      </motion.div>
 
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+      <motion.div 
+        initial={{ y: 10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.6 }}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}
+      >
         <img src="/logo.png" alt="AnonThera" style={{ width: 36, height: 36, borderRadius: 8 }} />
         <h1 style={{
           fontFamily: 'Outfit, sans-serif',
           fontSize: 28, fontWeight: 800, letterSpacing: '-1px',
           color: 'var(--text-primary)', margin: 0,
         }}>AnonThera</h1>
-      </div>
-      <p style={{
+      </motion.div>
+      <motion.p 
+        initial={{ y: 10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+        style={{
         fontFamily: 'Outfit, sans-serif', fontStyle: 'italic',
         fontSize: 14, color: 'var(--text-secondary)', marginBottom: 28, textAlign: 'center',
-      }}>A safe space. No names. No judgment.</p>
+      }}>A safe space. No names. No judgment.</motion.p>
 
       {/* Auth Card */}
-      <div style={{
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.4, type: 'spring', stiffness: 300, damping: 25 }}
+        style={{
         width: '100%', maxWidth: 380,
         background: 'var(--bg-card)',
         border: '1px solid rgba(255,245,235,0.08)',
         borderRadius: 16, padding: '28px 24px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
       }}>
+        <AnimatePresence mode="wait">
         {mode === 'main' && (
-          <>
+          <motion.div
+            key="main"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
             <p style={{ fontSize: 15, fontWeight: 600, textAlign: 'center', marginBottom: 20, color: 'var(--text-primary)' }}>
               Welcome 💚
             </p>
@@ -144,11 +175,17 @@ export default function LoginPage({ onSignedIn }) {
             <p style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
               Free forever · No real name stored · 100% anonymous
             </p>
-          </>
+          </motion.div>
         )}
 
         {mode === 'phone' && (
-          <>
+          <motion.div
+            key="phone"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+          >
             <button onClick={() => setMode('main')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, marginBottom: 16, fontFamily: 'inherit' }}>← Back</button>
             <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>Enter your phone number</p>
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -163,11 +200,17 @@ export default function LoginPage({ onSignedIn }) {
             <button className="btn-primary" onClick={handlePhoneSubmit} disabled={phone.length < 10 || !!loading} style={{ width: '100%' }}>
               {loading === 'phone' ? 'Sending OTP…' : 'Send OTP'}
             </button>
-          </>
+          </motion.div>
         )}
 
         {mode === 'otp' && (
-          <>
+          <motion.div
+            key="otp"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+          >
             <button onClick={() => setMode('phone')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, marginBottom: 16, fontFamily: 'inherit' }}>← Back</button>
             <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>Enter OTP</p>
             <input
@@ -179,11 +222,12 @@ export default function LoginPage({ onSignedIn }) {
             <button className="btn-primary" onClick={handleOTPVerify} disabled={otp.length < 6 || !!loading} style={{ width: '100%' }}>
               {loading === 'otp' ? 'Verifying…' : 'Verify & Enter'}
             </button>
-          </>
+          </motion.div>
         )}
 
         {error && <p style={{ color: 'var(--danger)', fontSize: 12, marginTop: 10, textAlign: 'center' }}>{error}</p>}
-      </div>
+        </AnimatePresence>
+      </motion.div>
 
       {/* SDG badges */}
       <div style={{ marginTop: 28, display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
@@ -191,6 +235,6 @@ export default function LoginPage({ onSignedIn }) {
       </div>
 
       <div id="recaptcha-container" />
-    </div>
+    </motion.div>
   );
 }

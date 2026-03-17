@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from 'framer-motion';
 import './index.css';
 import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getOrCreateAnonId } from './utils/anonId';
-import Toast, { showToast } from './components/shared/Toast';
+import Toast from './components/shared/Toast';
 
 import LoginPage from './components/auth/LoginPage';
 import Onboarding from './components/onboarding/Onboarding';
@@ -14,7 +16,7 @@ import MoodTab from './components/mood/MoodTab';
 import PeerTab from './components/peer/PeerTab';
 import HelpTab from './components/help/HelpTab';
 
-export const LANGUAGES = [
+const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧', native: 'English', promptName: 'English', speech: 'en-IN' },
   { code: 'hi', label: 'हिंदी', flag: '🇮🇳', native: 'हिंदी', promptName: 'Hindi', speech: 'hi-IN' },
   { code: 'ta', label: 'தமிழ்', flag: '🇮🇳', native: 'தமிழ்', promptName: 'Tamil', speech: 'ta-IN' },
@@ -62,7 +64,9 @@ export default function App() {
             anonId, language: languageCode, struggles,
             isAvailable: false, lastActive: serverTimestamp(),
           }, { merge: true });
-        } catch {}
+        } catch (error) {
+          console.error('Failed to sync user doc', error);
+        }
       } else {
         setUser(null);
         setAuthState('loggedOut');
@@ -77,7 +81,7 @@ export default function App() {
     setLanguageCode(lang.code);
     localStorage.setItem('anonthera_lang', lang.code);
     if (user) {
-      try { setDoc(doc(db, 'users', user.uid), { language: lang.code }, { merge: true }); } catch {}
+      try { setDoc(doc(db, 'users', user.uid), { language: lang.code }, { merge: true }); } catch (error) { console.error('Failed to update language', error); }
     }
   };
 
@@ -124,32 +128,43 @@ export default function App() {
 
       {/* Content */}
       <div style={{ flex: 1, position: 'relative', zIndex: 1, height: '100dvh', overflow: 'hidden' }}>
-        {activeTab === 'chat' && (
-          <Chat
-            language={language}
-            user={user}
-            anonId={anonId}
-            struggles={struggles}
-            onPeerNudge={() => setActiveTab('peer')}
-            onOpenHelp={() => { setShowSOSInHelp(true); setActiveTab('help'); }}
-            prefillText={bridgeText}
-            onConsumePrefill={() => setBridgeText('')}
-            onLanguageChange={handleLanguageChange}
-          />
-        )}
-        {activeTab === 'mood' && (
-          <MoodTab
-            user={user}
-            language={language}
-            onBridgeToChat={(text) => { setBridgeText(text); setActiveTab('chat'); }}
-          />
-        )}
-        {activeTab === 'peer' && (
-          <PeerTab user={user} anonId={anonId} struggles={struggles} />
-        )}
-        {activeTab === 'help' && (
-          <HelpTab showSOSBanner={showSOSInHelp} />
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, scale: 0.98, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: -10 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            style={{ width: '100%', height: '100%', position: 'absolute' }}
+          >
+            {activeTab === 'chat' && (
+              <Chat
+                language={language}
+                user={user}
+                anonId={anonId}
+                struggles={struggles}
+                onPeerNudge={() => setActiveTab('peer')}
+                onOpenHelp={() => { setShowSOSInHelp(true); setActiveTab('help'); }}
+                prefillText={bridgeText}
+                onConsumePrefill={() => setBridgeText('')}
+                onLanguageChange={handleLanguageChange}
+              />
+            )}
+            {activeTab === 'mood' && (
+              <MoodTab
+                user={user}
+                language={language}
+                onBridgeToChat={(text) => { setBridgeText(text); setActiveTab('chat'); }}
+              />
+            )}
+            {activeTab === 'peer' && (
+              <PeerTab user={user} anonId={anonId} struggles={struggles} onStrugglesChange={handleStrugglesSelect} onPeerActiveChange={() => {}} />
+            )}
+            {activeTab === 'help' && (
+              <HelpTab showSOSBanner={showSOSInHelp} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />

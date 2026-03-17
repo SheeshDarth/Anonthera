@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Logo = ({ size = 'medium', darkMode = false }) => {
+const Logo = ({ size = 'medium' }) => {
   const sizeMap = {
     small: { width: '24px', height: '24px', fontSize: '1.4rem' },
     medium: { width: '32px', height: '32px', fontSize: '1.8rem' },

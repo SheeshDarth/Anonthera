@@ -12,6 +12,7 @@ const VoiceVisualizer = ({ stream, isSpeaking, small = false }) => {
         audioCtxRef.current.close().catch(() => {});
         audioCtxRef.current = null;
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWaveData(Array(small ? 15 : 40).fill(0));
       return;
     }

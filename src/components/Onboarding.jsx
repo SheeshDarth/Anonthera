@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { LANGUAGES, STRUGGLE_TAGS } from '../constants';
 
 export default function Onboarding({
@@ -42,6 +42,7 @@ export default function Onboarding({
     };
     window.addEventListener('keypress', handleKeyPress);
     return () => window.removeEventListener('keypress', handleKeyPress);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   return (

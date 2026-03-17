@@ -1,7 +1,7 @@
 import React from 'react';
 
 export default function SOSBanner({ onOpenHelp, onDismiss }) {
-  const vibrate = () => { try { navigator.vibrate?.([100, 50, 100, 50, 100]); } catch {} };
+  const vibrate = () => { try { navigator.vibrate?.([100, 50, 100, 50, 100]); } catch (e) { console.warn(e); } };
 
   React.useEffect(() => { vibrate(); }, []);
 

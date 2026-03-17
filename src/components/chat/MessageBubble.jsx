@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+// eslint-disable-next-line no-unused-vars
+import { motion } from 'framer-motion';
 import { useTTS } from '../../hooks/useTTS';
 
-export default function MessageBubble({ message, languageCode, onPeerNudge }) {
+const MessageBubble = ({ message, languageCode, onPeerNudge }) => {
   const { speak, stop, isSpeaking } = useTTS();
   const isUser = message.role === 'user';
   const [localSpeaking, setLocalSpeaking] = useState(false);
 
   // Track when TTS ends
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!isSpeaking) setLocalSpeaking(false);
   }, [isSpeaking]);
 
@@ -18,7 +21,12 @@ export default function MessageBubble({ message, languageCode, onPeerNudge }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start', marginBottom: 14 }}>
+    <motion.div 
+      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start', marginBottom: 14 }}
+    >
       {/* AI bubble */}
       {!isUser && (
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
@@ -89,6 +97,8 @@ export default function MessageBubble({ message, languageCode, onPeerNudge }) {
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
-}
+};
+
+export default React.memo(MessageBubble);

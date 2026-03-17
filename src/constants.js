@@ -1,9 +1,9 @@
-﻿export const LANGUAGES = [
+export const LANGUAGES = [
   { code: 'en', label: 'English', promptName: 'English', speech: 'en-IN' },
-  { code: 'hi', label: 'हिंदी', promptName: 'Hindi', speech: 'hi-IN' },
-  { code: 'ta', label: 'தமிழ்', promptName: 'Tamil', speech: 'ta-IN' },
-  { code: 'te', label: 'తెలుగు', promptName: 'Telugu', speech: 'te-IN' },
-  { code: 'kn', label: 'ಕನ್ನಡ', promptName: 'Kannada', speech: 'kn-IN' }
+  { code: 'hi', label: 'हिंदी', promptName: 'Hinglish (Hindi written strictly using the English alphabet A-Z)', speech: 'hi-IN' },
+  { code: 'ta', label: 'தமிழ்', promptName: 'Tanglish (Tamil written strictly using the English alphabet A-Z)', speech: 'ta-IN' },
+  { code: 'te', label: 'తెలుగు', promptName: 'Tenglish (Telugu written strictly using the English alphabet A-Z)', speech: 'te-IN' },
+  { code: 'kn', label: 'ಕನ್ನಡ', promptName: 'Kanglish (Kannada written strictly using the English alphabet A-Z)', speech: 'kn-IN' }
 ];
 
 export const STRUGGLE_TAGS = [

@@ -20,31 +20,31 @@ const MODEL = 'llama-3.1-8b-instant'; // fast, free, multilingual
 const FALLBACKS = {
   noKey: {
     en: "I'm having trouble connecting — the API key isn't set up yet.",
-    hi: "कनेक्ट करने में दिक्कत हो रही है — API key अभी सेट नहीं हुई है।",
-    ta: "இணைப்பில் சிக்கல் — API விசை இன்னும் அமைக்கப்படவில்லை.",
-    te: "కనెక్ట్ చేయడంలో సమస్య — API కీ ఇంకా సెట్ కాలేదు.",
-    kn: "ಸಂಪರ್ಕಿಸುವಲ್ಲಿ ತೊಂದರೆ — API ಕೀ ಇನ್ನೂ ಸೆಟ್ ಆಗಿಲ್ಲ.",
+    hi: "Connect karne me dikkat ho rahi hai — API key abhi set nahi hui hai.",
+    ta: "Inaippil sikkal — API visai innum amaikkappadavillai.",
+    te: "Connect cheyadamlo samasya — API key inka set kaledu.",
+    kn: "Samparkisuvalli tondare — API key innoo set agilla.",
   },
   short: {
     en: "Hey 🌱 I'm here. What's on your mind?",
-    hi: "अरे 🌱 मैं यहाँ हूँ। क्या चल रहा है?",
-    ta: "ஹேய் 🌱 நான் இங்கே இருக்கிறேன். எங்கே பேசலாம்?",
-    te: "హేయ్ 🌱 నేను ఇక్కడ ఉన్నాను. ఏం జరుగుతోంది?",
-    kn: "ಹೇ 🌱 ನಾನು ಇಲ್ಲಿದ್ದೀನಿ. ಏನಾಯ್ತು?",
+    hi: "Arre 🌱 main yahan hoon. Kya chal raha hai?",
+    ta: "Hey 🌱 naan inge irukkiren. Enge pesalam?",
+    te: "Hey 🌱 nenu ikkada unnanu. Emi jarugutondi?",
+    kn: "Hey 🌱 naanu illiddini. Eenaythu?",
   },
   crisis: {
     en: "I hear you. You're not alone in this. Can you tell me more about what's happening?",
-    hi: "मैं सुन रहा हूँ। तुम अकेले नहीं हो। क्या हो रहा है बताओ?",
-    ta: "நான் கேட்கிறேன். நீங்கள் தனியாக இல்லை. என்ன நடக்கிறது சொல்லுங்கள்?",
-    te: "నేను వింటున్నాను. మీరు ఒంటరిగా లేరు. ఏం జరుగుతోందో చెప్పగలరా?",
-    kn: "ನಾನು ಕೇಳ್ತಿದ್ದೇನೆ. ನೀವು ಒಬ್ಬರೇ ಅಲ್ಲ. ಏನಾಗ್ತಿದೆ ಹೇಳ್ತೀರಾ?",
+    hi: "Main sun raha hoon. Tum akele nahi ho. Kya ho raha hai batao?",
+    ta: "Naan ketkiren. Neengal thaniyaga illai. Enna nadakkirathu sollungal?",
+    te: "Nenu vintunnanu. Meeru ontariga leru. Emi jarugutondo cheppagalara?",
+    kn: "Naanu kelthiddini. Neevu obbare alla. Eenagtide helthira?",
   },
   general: {
     en: "I'm listening. Tell me what's going on?",
-    hi: "मैं सुन रहा हूँ। क्या हो रहा है बताओ?",
-    ta: "நான் கேட்கிறேன். என்ன நடக்கிறது?",
-    te: "నేను వింటున్నాను. ఏం జరుగుతోంది?",
-    kn: "ನಾನು ಕೇಳ್ತಿದ್ದೇನೆ. ಏನಾಗ್ತಿದೆ ಹೇಳಿ?",
+    hi: "Main sun raha hoon. Kya ho raha hai batao?",
+    ta: "Naan ketkiren. Enna nadakkirathu?",
+    te: "Nenu vintunnanu. Emi jarugutondi?",
+    kn: "Naanu kelthiddini. Eenagtide heli?",
   },
 };
 
@@ -53,7 +53,7 @@ const getFallback = (type, langCode) =>
 
 // ── Build messages array ──────────────────────────────
 const buildMessages = (userText, messageHistory, language) => {
-  const langLine = `RESPOND ONLY IN ${language.promptName.toUpperCase()}. Not a single word in any other language.`;
+  const langLine = `CRITICAL RULE: You must respond in the language: ${language.promptName.toUpperCase()}. \nDO NOT USE NATIVE SCRIPTS.\nONLY USE THE ENGLISH ALPHABET (A-Z).\nExample: Instead of 'नमस्ते', write 'Namaste'.\nFailure to use the English alphabet will break the system.`;
 
   const history = messageHistory
     .filter((m) => !m.meta && m.text && m.text.length > 0)
@@ -155,7 +155,7 @@ export const useAI = (language, user) => {
           messages: [
             {
               role: 'user',
-              content: `A student tracked mood: ${JSON.stringify(moodData)}. Write 2 warm, brief observations (under 55 words). In ${lang}. Not a list. Like a caring friend.`,
+              content: `A student tracked mood: ${JSON.stringify(moodData)}. Write 2 warm, brief observations (under 55 words). In ${lang.promptName}. CRITICAL: Write it using the ENGLISH ALPHABET ONLY (A-Z). Do not use native scripts. Not a list. Like a caring friend.`,
             },
           ],
           max_tokens: 120,
@@ -179,7 +179,7 @@ export const useAI = (language, user) => {
           messages: [
             {
               role: 'user',
-              content: `One warm, non-cliché affirmation (under 18 words) for a student dealing with "${struggle}". In ${lang}. Real and human.`,
+              content: `One warm, non-cliché affirmation (under 18 words) for a student dealing with "${struggle}". In ${lang.promptName}. CRITICAL: Write it using the ENGLISH ALPHABET ONLY (A-Z). Do not use native scripts. Real and human.`,
             },
           ],
           max_tokens: 60,

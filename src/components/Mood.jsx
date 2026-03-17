@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   collection,
   doc,
@@ -7,8 +7,7 @@ import {
   query,
   setDoc,
   serverTimestamp,
-  deleteDoc,
-  updateDoc
+  deleteDoc
 } from 'firebase/firestore';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { db } from '../firebase';
@@ -109,6 +108,7 @@ export default function Mood({ user, onWorryToChat }) {
 
   useEffect(() => {
     if (!todayEntry) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEnergy(todayEntry.energy ?? 3);
     setWorry(todayEntry.worry ?? '');
     setGratitude(todayEntry.gratitude ?? '');

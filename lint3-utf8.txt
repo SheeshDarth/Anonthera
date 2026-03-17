@@ -1,0 +1,16 @@
+﻿
+> anonthera@0.0.0 lint
+> eslint .
+
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\App.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\auth\LoginPage.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Downloads\COLLEGE\6th Sem\GEN AI\anonthera\anonthera\src\components\chat\MessageBubble.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+Γ£û 3 problems (3 errors, 0 warnings)
+
