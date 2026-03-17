@@ -87,17 +87,57 @@ export default function Chat({
   const { sendMessage, isLoading } = useAI(language, user);
   const { speak, stop: stopTTS, isSpeaking } = useTTS();
 
-  const { isListening, startListening, stopListening, waveData, isSupported: voiceSupported } =
-    useVoice(language.code, (text) => {
-      if (isVoiceMode) {
-        // Auto-send in voice mode
-        if (text.trim() && !isLoading) {
-          handleSend(text.trim());
-        }
-      } else {
-        setInput((prev) => (prev ? `${prev} ${text}` : text));
-      }
+  const handleSendWithText = useCallback(async (text) => {
+    if (!text.trim() || isLoading || pendingRef.current) return;
+    pendingRef.current = true;
+    
+    setInput('');
+    let newCount = 0;
+    setUserMsgCount((prev) => {
+        newCount = prev + 1;
+        return newCount;
     });
+
+    const userMsg = { id: makeId(), role: 'user', text };
+    let historySnapshot = [];
+    setMessages((prev) => { historySnapshot = [...prev, userMsg]; return historySnapshot; });
+    
+    try {
+      if (isVoiceMode) stopListening(); // Briefly stop listening while AI thinks
+      await new Promise((r) => setTimeout(r, 30));
+      const aiText = await sendMessage(text, historySnapshot);
+      if (!aiText) return;
+      
+      if (detectCrisis(text) || detectCrisis(aiText)) setShowSOS(true);
+      const nudge = newCount % 4 === 0 && !detectCrisis(aiText);
+      
+      setMessages((prev) => [...prev, { id: makeId(), role: 'assistant', text: aiText, nudge }]);
+      
+      if (autoPlayTTS || isVoiceMode) {
+        speak(aiText, language.code); // Sarvam TTS fires here
+      }
+    } catch (e) { 
+      console.error(e); 
+    } finally { 
+      pendingRef.current = false; 
+    }
+  }, [isLoading, sendMessage, autoPlayTTS, isVoiceMode, speak, language.code, stopListening]);
+
+  const handleSend = useCallback((textOverride = null) => {
+    const text = typeof textOverride === 'string' ? textOverride : input;
+    handleSendWithText(text);
+  }, [input, handleSendWithText]);
+
+  const onTranscript = useCallback((text) => {
+    if (!text.trim()) return;
+    setInput(text);
+    if (autoPlayTTS || isVoiceMode) {
+      handleSendWithText(text);
+    }
+  }, [autoPlayTTS, isVoiceMode, handleSendWithText]);
+
+  const { isListening, startListening, stopListening, waveData, isSupported: voiceSupported } =
+    useVoice(language.code, onTranscript);
 
   // Scroll
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
@@ -133,38 +173,6 @@ export default function Chat({
       window.location.reload();
     } catch (e) { console.error(e); }
   };
-
-  const handleSend = useCallback(async (textOverride = null) => {
-    const userText = typeof textOverride === 'string' ? textOverride : input.trim();
-    if (!userText || isLoading || pendingRef.current) return;
-    
-    pendingRef.current = true;
-    const newCount = userMsgCount + 1;
-    setUserMsgCount(newCount);
-    if (!textOverride) setInput('');
-
-    const userMsg = { id: makeId(), role: 'user', text: userText };
-    let historySnapshot = [];
-    setMessages((prev) => { historySnapshot = [...prev, userMsg]; return historySnapshot; });
-
-    try {
-      if (isVoiceMode) stopListening(); // Briefly stop listening while AI thinks
-      await new Promise((r) => setTimeout(r, 30));
-      const aiText = await sendMessage(userText, historySnapshot);
-      if (!aiText) return;
-      if (detectCrisis(userText) || detectCrisis(aiText)) setShowSOS(true);
-      const nudge = newCount % 4 === 0 && !detectCrisis(aiText);
-      setMessages((prev) => [...prev, { id: makeId(), role: 'assistant', text: aiText, nudge }]);
-      
-      if (autoPlayTTS || isVoiceMode) {
-        // In voice mode, we want continuous conversation: auto-start mic after TTS finishes
-        speak(aiText, language.code, isVoiceMode ? () => {
-            if (!pendingRef.current) startListening();
-        } : null);
-      }
-    } catch (e) { console.error(e); }
-    finally { pendingRef.current = false; }
-  }, [input, isLoading, userMsgCount, sendMessage, autoPlayTTS, isVoiceMode, speak, language.code, stopListening, startListening]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
