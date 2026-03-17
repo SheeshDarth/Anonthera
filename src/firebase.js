@@ -17,8 +17,8 @@ if (import.meta.env.DEV) {
   console.log('[Firebase] Loaded config:', {
     apiKey:    firebaseConfig.apiKey?.slice(0, 12) + '…',
     projectId: firebaseConfig.projectId,
-    hasGemini: !!import.meta.env.VITE_GEMINI_KEY,
-    geminiKey: import.meta.env.VITE_GEMINI_KEY?.slice(0, 14) + '…',
+    hasGroq: !!import.meta.env.VITE_GROQ_KEY,
+    groqKey: import.meta.env.VITE_GROQ_KEY?.slice(0, 14) + '…',
   });
 }
 
