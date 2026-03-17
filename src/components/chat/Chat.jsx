@@ -9,6 +9,7 @@ import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import SOSBanner from './SOSBanner';
 import LanguageSheet from '../shared/LanguageSheet';
+import VoiceVisualizer from './VoiceVisualizer';
 import { showToast } from '../shared/Toast';
 
 const makeId = () => `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -97,7 +98,7 @@ export default function Chat({
     }
   }, [autoPlayTTS, isVoiceMode]);
 
-  const { isListening, startListening, stopListening, waveData, isSupported: voiceSupported } =
+  const { isListening, startListening, stopListening, activeStream, interimText, isSupported: voiceSupported } =
     useVoice(language.code, onTranscript);
 
   const handleSendWithText = useCallback(async (text) => {
@@ -287,10 +288,10 @@ export default function Chat({
       {/* ── Voice (Text Mode) ── */}
       {!isVoiceMode && isListening && (
         <div style={{ padding: '8px 14px', background: 'rgba(155,114,207,0.06)', borderTop: '1px solid rgba(155,114,207,0.15)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <div className="waveform-bars">
-            {waveData.map((h, i) => <div key={i} className="wave-bar" style={{ height: `${Math.max(5, h * 0.22)}px` }} />)}
-          </div>
-          <span style={{ fontSize: 12, color: 'var(--brand-soft)', fontStyle: 'italic', flex: 1 }}>Listening…</span>
+          <VoiceVisualizer stream={activeStream} small={true} />
+          <span style={{ fontSize: 13, color: 'var(--brand-soft)', fontStyle: 'italic', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {interimText || 'Listening…'}
+          </span>
           <button onClick={stopListening} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13 }}>Done ✓</button>
         </div>
       )}
@@ -324,9 +325,14 @@ export default function Chat({
       {/* ── Voice Wave Panel for Voice Mode ── */}
       {isVoiceMode && (
          <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginBottom: 'var(--nav-height)', background: 'var(--bg-card)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <div className="waveform-bars" style={{ gap: 8, height: 60, alignItems: 'center' }}>
-              {waveData.map((h, i) => <div key={i} className="wave-bar" style={{ width: 6, height: `${Math.max(10, h * 0.4)}px`, background: isSpeaking ? 'var(--brand)' : 'var(--brand-soft)' }} />)}
+            
+            <div style={{ minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                <p style={{ color: 'var(--text-primary)', fontSize: 17, textAlign: 'center', maxWidth: '85%', fontStyle: 'italic', opacity: 0.9 }}>
+                  {isListening ? (interimText || 'Listening...') : (isSpeaking ? 'Speaking...' : '')}
+                </p>
             </div>
+
+            <VoiceVisualizer stream={activeStream} isSpeaking={isSpeaking} />
             
             <button 
               className="btn-primary" 

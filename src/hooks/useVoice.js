@@ -20,29 +20,29 @@ const getSupportedMimeType = () => {
 
 export const useVoice = (languageCode, onTranscript) => {
   const [isListening, setIsListening] = useState(false);
-  const [waveData, setWaveData] = useState(Array(40).fill(0));
+  const [interimText, setInterimText] = useState('');
+  const [activeStream, setActiveStream] = useState(null);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const animRef = useRef(null);
+  const speechRecoRef = useRef(null);
 
   const isSupported = typeof window !== 'undefined' && 
                       !!navigator.mediaDevices?.getUserMedia && 
                       typeof MediaRecorder !== 'undefined';
 
   const cleanup = useCallback(() => {
-    if (animRef.current) cancelAnimationFrame(animRef.current);
-    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
+    if (speechRecoRef.current) {
+        try { speechRecoRef.current.stop(); } catch(e){}
+        speechRecoRef.current = null;
     }
     if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+        setActiveStream(null);
     }
-    setWaveData(Array(40).fill(0));
+    setInterimText('');
   }, []);
 
   useEffect(() => {
@@ -59,26 +59,28 @@ export const useVoice = (languageCode, onTranscript) => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
-        
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContext();
-        audioCtxRef.current = audioCtx;
-        
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 128;
-        source.connect(analyser);
-        
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        const draw = () => {
-            if (!streamRef.current) return;
-            analyser.getByteFrequencyData(dataArray);
-            // Slice the first 40 bins to match requirement and normalize mapping implicitly
-            setWaveData(Array.from(dataArray).slice(0, 40));
-            animRef.current = requestAnimationFrame(draw);
-        };
-        draw();
+        setActiveStream(stream); // triggering re-render to pass stream to visualizer
+
+        // Setup SpeechRecognition for UI interim immediately printing words
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const reco = new SpeechRecognition();
+            reco.continuous = true;
+            reco.interimResults = true;
+            reco.lang = SARVAM_LANG_MAP[languageCode] || 'en-IN';
+            
+            reco.onresult = (event) => {
+                let currentInterim = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    currentInterim += event.results[i][0].transcript;
+                }
+                setInterimText(currentInterim);
+            };
+            reco.onerror = (e) => { if (import.meta.env.DEV) console.log('[useVoice] Reco error:', e); };
+            
+            speechRecoRef.current = reco;
+            try { reco.start(); } catch(e){}
+        }
 
         const mimeType = getSupportedMimeType();
         if (import.meta.env.DEV) {
@@ -99,6 +101,9 @@ export const useVoice = (languageCode, onTranscript) => {
             setIsListening(false);
             const apiKey = import.meta.env.VITE_SARVAM_KEY;
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+            
+            // Capture interim fallback in case Sarvam fails 
+            const finalInterim = interimText;
             cleanup();
             
             if (audioBlob.size === 0) {
@@ -108,7 +113,7 @@ export const useVoice = (languageCode, onTranscript) => {
 
             if (!apiKey) {
                 console.error('[useVoice] Missing VITE_SARVAM_KEY in environment variables.');
-                onTranscript('');
+                onTranscript(finalInterim);
                 return;
             }
 
@@ -131,12 +136,18 @@ export const useVoice = (languageCode, onTranscript) => {
                 if (import.meta.env.DEV) {
                     console.log('[useVoice] Transcript received:', transcript);
                 }
-                onTranscript(transcript.trim());
+                
+                // If Sarvam gives empty result due to silence but web API caught something, fallback
+                if (!transcript.trim() && finalInterim.trim()) {
+                   onTranscript(finalInterim.trim());
+                } else {
+                   onTranscript(transcript.trim());
+                }
             } catch (err) {
                 if (import.meta.env.DEV) {
                     console.log('[useVoice] ASR Error:', err);
                 }
-                onTranscript(''); // Fail silently without breaking
+                onTranscript(finalInterim.trim()); // Fail gracefully with visual STT text
             }
         };
 
@@ -147,7 +158,7 @@ export const useVoice = (languageCode, onTranscript) => {
         setIsListening(false);
         cleanup();
     }
-  }, [isSupported, languageCode, onTranscript, cleanup]);
+  }, [isSupported, languageCode, onTranscript, cleanup, interimText]);
 
   const stopListening = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -155,5 +166,5 @@ export const useVoice = (languageCode, onTranscript) => {
     }
   }, []);
 
-  return { isListening, startListening, stopListening, waveData, isSupported };
+  return { isListening, startListening, stopListening, activeStream, interimText, isSupported };
 };
