@@ -102,46 +102,18 @@ export const useVoice = (languageCode, onTranscript) => {
     };
 
     try {
-      // 1. Start the visualizer stream first to get mic permission and avoid collision
-      try {
-        if (!streamRef.current) {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          streamRef.current = stream;
-        }
-        
-        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          const ctx = new AudioContext();
-          audioCtxRef.current = ctx;
-          
-          const src = ctx.createMediaStreamSource(streamRef.current);
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 32;
-          src.connect(analyser);
-          
-          const dataArr = new Uint8Array(analyser.frequencyBinCount);
-          const tick = () => {
-            if (!isListening && !recognitionRef.current) return; 
-            analyser.getByteFrequencyData(dataArr);
-            setWaveData([
-               Math.max(8, dataArr[1] / 3),
-               Math.max(14, dataArr[3] / 2.5),
-               Math.max(20, dataArr[5] / 2),
-               Math.max(14, dataArr[3] / 2.5),
-               Math.max(8, dataArr[1] / 3),
-            ]);
-            animRef.current = requestAnimationFrame(tick);
-          };
-          tick();
-        }
-      } catch (err) {
-        console.warn("Visualizer start failed (harmless):", err);
-        animRef.current = setInterval(() => {
-          setWaveData([Math.random()*20+10, Math.random()*30+15, Math.random()*40+20, Math.random()*30+15, Math.random()*20+10]);
-        }, 150);
-      }
+      // Use fallback visualizer to avoid mic collisions with SpeechRecognition
+      animRef.current = setInterval(() => {
+        if (!isListening && !recognitionRef.current) return;
+        setWaveData([
+          Math.random()*20+10, 
+          Math.random()*30+15, 
+          Math.random()*40+20, 
+          Math.random()*30+15, 
+          Math.random()*20+10
+        ]);
+      }, 150);
 
-      // 2. NOW start Speech Recognition after standard mic access is granted
       r.start();
     } catch (e) {
       console.error('Failed to start recognition:', e);

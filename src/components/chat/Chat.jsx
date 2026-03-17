@@ -114,14 +114,15 @@ export default function Chat({
 
   // Auto-resume continuous Voice Mode if native recognition stops due to silence
   useEffect(() => {
+    let t;
     if (isVoiceMode && !isListening && !isLoading && !isSpeaking) {
-      const t = setTimeout(() => {
+      t = setTimeout(() => {
         if (isVoiceMode && !isListening && !isLoading && !isSpeaking && !pendingRef.current) {
           startListening();
         }
-      }, 400);
-      return () => clearTimeout(t);
+      }, 1000);
     }
+    return () => clearTimeout(t);
   }, [isVoiceMode, isListening, isLoading, isSpeaking, startListening]);
 
   const handleSignOut = async () => {
