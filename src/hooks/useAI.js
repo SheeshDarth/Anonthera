@@ -111,7 +111,13 @@ export const useAI = (language, user) => {
 
       return aiText;
     } catch (err) {
-      console.error('[useAI] error:', err.message);
+      console.error('[useAI] API Error:', err);
+      
+      // If we are in dev mode, show the actual error to the user so we can debug!
+      if (import.meta.env.DEV) {
+        return `[DEV ERROR] ${err.message || String(err)}`;
+      }
+
       const t = userText.toLowerCase();
       if (t.length <= 4) return getFallback('short', lc);
       if (t.includes('suicide') || t.includes('self harm') || t.includes('end my life'))
