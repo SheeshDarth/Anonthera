@@ -26,13 +26,13 @@ function LoadingScreen() {
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'linear-gradient(170deg, #1A1528, #161220)',
+      background: '#0F0D15',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 20,
     }}>
-      <div style={{ fontSize: 52, animation: 'float 2.5s ease-in-out infinite', filter: 'drop-shadow(0 0 20px rgba(155,114,207,0.5))' }}>🌱</div>
-      <div style={{ width: 38, height: 38, border: '2.5px solid rgba(155,114,207,0.2)', borderTopColor: '#9B72CF', borderRadius: '50%', animation: 'spin 0.85s linear infinite' }} />
-      <p style={{ color: 'var(--text-muted)', fontSize: 13, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Preparing your safe space…</p>
+      <img src="/logo.png" alt="" style={{ width: 52, height: 52, borderRadius: 12, animation: 'float 2.5s ease-in-out infinite', filter: 'drop-shadow(0 4px 16px rgba(139,108,193,0.4))' }} />
+      <div style={{ width: 38, height: 38, border: '2.5px solid rgba(139,108,193,0.2)', borderTopColor: '#8B6CC1', borderRadius: '50%', animation: 'spin 0.85s linear infinite' }} />
+      <p style={{ color: 'var(--text-muted)', fontSize: 13, fontFamily: 'Outfit, sans-serif' }}>Preparing your safe space…</p>
     </div>
   );
 }
@@ -119,8 +119,8 @@ export default function App() {
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', position: 'relative', overflow: 'hidden' }}>
       {/* Subtle ambient orbs */}
-      <div style={{ position: 'fixed', top: '-8%', left: '-18%', width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(155,114,207,0.055) 0%, transparent 70%)', pointerEvents: 'none', animation: 'orb-drift-a 14s ease-in-out infinite', zIndex: 0 }} />
-      <div style={{ position: 'fixed', bottom: '-10%', right: '-12%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(123,174,154,0.045) 0%, transparent 70%)', pointerEvents: 'none', animation: 'orb-drift-b 18s ease-in-out infinite', zIndex: 0 }} />
+      <div style={{ position: 'fixed', top: '-8%', left: '-18%', width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,108,193,0.04) 0%, transparent 70%)', pointerEvents: 'none', animation: 'orb-drift-a 14s ease-in-out infinite', zIndex: 0 }} />
+      <div style={{ position: 'fixed', bottom: '-10%', right: '-12%', width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(107,165,141,0.035) 0%, transparent 70%)', pointerEvents: 'none', animation: 'orb-drift-b 18s ease-in-out infinite', zIndex: 0 }} />
 
       {/* Content */}
       <div style={{ flex: 1, position: 'relative', zIndex: 1, height: '100dvh', overflow: 'hidden' }}>

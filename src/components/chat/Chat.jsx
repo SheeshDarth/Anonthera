@@ -149,11 +149,11 @@ export default function Chat({
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 14px', height: 'var(--header-height)',
-        background: 'rgba(22,18,32,0.94)', borderBottom: '1px solid rgba(255,245,235,0.06)', flexShrink: 0,
+        background: 'rgba(15,13,21,0.95)', borderBottom: '1px solid rgba(255,250,243,0.05)', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <img src="/logo.png" alt="" style={{ width: 24, height: 24, borderRadius: 6 }} />
-          <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>AnonThera</span>
+          <span style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>AnonThera</span>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 6px var(--success)' }} />
         </div>
 
@@ -204,7 +204,7 @@ export default function Chat({
       {/* ── Input ── */}
       <div style={{
         padding: '8px 12px', paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
-        background: 'rgba(20,17,28,0.96)', borderTop: '1px solid rgba(255,245,235,0.06)',
+        background: 'rgba(15,13,21,0.96)', borderTop: '1px solid rgba(255,250,243,0.05)',
         display: 'flex', gap: 9, alignItems: 'flex-end', flexShrink: 0,
         marginBottom: 'var(--nav-height)',
       }}>

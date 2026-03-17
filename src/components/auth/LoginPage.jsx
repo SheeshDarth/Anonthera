@@ -78,13 +78,13 @@ export default function LoginPage({ onSignedIn }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
         <img src="/logo.png" alt="AnonThera" style={{ width: 36, height: 36, borderRadius: 8 }} />
         <h1 style={{
-          fontFamily: 'Plus Jakarta Sans, sans-serif',
+          fontFamily: 'Outfit, sans-serif',
           fontSize: 28, fontWeight: 800, letterSpacing: '-1px',
           color: 'var(--text-primary)', margin: 0,
         }}>AnonThera</h1>
       </div>
       <p style={{
-        fontFamily: 'Plus Jakarta Sans, sans-serif', fontStyle: 'italic',
+        fontFamily: 'Outfit, sans-serif', fontStyle: 'italic',
         fontSize: 14, color: 'var(--text-secondary)', marginBottom: 28, textAlign: 'center',
       }}>A safe space. No names. No judgment.</p>
 

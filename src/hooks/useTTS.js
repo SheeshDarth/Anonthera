@@ -9,6 +9,12 @@ const VOICE_PROFILES = {
   'kn': { locale: 'kn-IN', pitch: 1.03, rate: 0.82, preferGoogle: true },
 };
 
+// Strip ALL emojis so TTS doesn't read them as "moon emoji" etc.
+const stripEmojis = (text) =>
+  text.replace(/[\u{1F600}-\u{1F9FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u{1FA00}-\u{1FAFF}\u{2702}-\u{27B0}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '')
+  .replace(/\s{2,}/g, ' ')
+  .trim();
+
 // Split into sentences for natural pauses
 const splitSentences = (text) => {
   return text
@@ -72,8 +78,10 @@ export const useTTS = () => {
       console.log('[TTS] Using voice:', voice?.name, voice?.lang);
     }
 
-    // Split into sentences for more natural delivery
-    const sentences = splitSentences(text);
+    // Strip emojis first, then split into sentences
+    const cleanText = stripEmojis(text);
+    if (!cleanText) return;
+    const sentences = splitSentences(cleanText);
     if (sentences.length === 0) return;
 
     setIsSpeaking(true);
