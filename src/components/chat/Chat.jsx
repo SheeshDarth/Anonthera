@@ -87,6 +87,19 @@ export default function Chat({
   const { sendMessage, isLoading } = useAI(language, user);
   const { speak, stop: stopTTS, isSpeaking } = useTTS();
 
+  const handleSendRef = useRef(null);
+
+  const onTranscript = useCallback((text) => {
+    if (!text.trim()) return;
+    setInput(text);
+    if (autoPlayTTS || isVoiceMode) {
+      handleSendRef.current?.(text);
+    }
+  }, [autoPlayTTS, isVoiceMode]);
+
+  const { isListening, startListening, stopListening, waveData, isSupported: voiceSupported } =
+    useVoice(language.code, onTranscript);
+
   const handleSendWithText = useCallback(async (text) => {
     if (!text.trim() || isLoading || pendingRef.current) return;
     pendingRef.current = true;
@@ -123,21 +136,14 @@ export default function Chat({
     }
   }, [isLoading, sendMessage, autoPlayTTS, isVoiceMode, speak, language.code, stopListening]);
 
+  useEffect(() => {
+    handleSendRef.current = handleSendWithText;
+  }, [handleSendWithText]);
+
   const handleSend = useCallback((textOverride = null) => {
     const text = typeof textOverride === 'string' ? textOverride : input;
     handleSendWithText(text);
   }, [input, handleSendWithText]);
-
-  const onTranscript = useCallback((text) => {
-    if (!text.trim()) return;
-    setInput(text);
-    if (autoPlayTTS || isVoiceMode) {
-      handleSendWithText(text);
-    }
-  }, [autoPlayTTS, isVoiceMode, handleSendWithText]);
-
-  const { isListening, startListening, stopListening, waveData, isSupported: voiceSupported } =
-    useVoice(language.code, onTranscript);
 
   // Scroll
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
