@@ -112,6 +112,18 @@ export default function Chat({
     if (prefillText) { setInput(prefillText); onConsumePrefill?.(); }
   }, [prefillText, onConsumePrefill]);
 
+  // Auto-resume continuous Voice Mode if native recognition stops due to silence
+  useEffect(() => {
+    if (isVoiceMode && !isListening && !isLoading && !isSpeaking) {
+      const t = setTimeout(() => {
+        if (isVoiceMode && !isListening && !isLoading && !isSpeaking && !pendingRef.current) {
+          startListening();
+        }
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [isVoiceMode, isListening, isLoading, isSpeaking, startListening]);
+
   const handleSignOut = async () => {
     setShowMenu(false);
     try {
