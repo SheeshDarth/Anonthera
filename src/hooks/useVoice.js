@@ -1,132 +1,118 @@
 import { useState, useRef, useCallback } from 'react';
-
-// Browser-native speech recognition locale map (all 5 languages)
-const LOCALE_MAP = {
-  'en': 'en-IN',
-  'hi': 'hi-IN',
-  'ta': 'ta-IN',
-  'te': 'te-IN',
-  'kn': 'kn-IN',
-};
+import axios from 'axios';
 
 export const useVoice = (languageCode, onTranscript) => {
   const [isListening, setIsListening] = useState(false);
-  const [interim, setInterim] = useState('');
   const [waveData, setWaveData] = useState([20, 35, 50, 35, 20]);
   
-  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
   const animRef = useRef(null);
-  const audioCtxRef = useRef(null);
-
-  const isSupported = typeof window !== 'undefined' &&
-    Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
-
+  
+  // Note: We use a custom unmount / cleanup
   const stopWaveform = useCallback(() => {
-    if (animRef.current) cancelAnimationFrame(animRef.current);
+    if (animRef.current) clearInterval(animRef.current);
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
     }
     setWaveData([20, 35, 50, 35, 20]);
   }, []);
 
+  const processAudio = async (audioBlob) => {
+    const apiKey = import.meta.env.VITE_SARVAM_API_KEY;
+    if (!apiKey) {
+        console.warn("[Voice] Missing VITE_SARVAM_API_KEY");
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        // Sarvam expects the audio file, prompt (optional), and model.
+        // It's a translate STT endpoint, so it will always translate to English natively. 
+        // We will pass the detected language as a prompt hint if needed, or leave it blank to auto-detect.
+        formData.append('file', audioBlob, 'recording.wav');
+        formData.append('prompt', '');
+        formData.append('model', 'saaras:v1');
+
+        const response = await axios.post(
+            'https://api.sarvam.ai/speech-to-text-translate',
+            formData,
+            {
+                headers: {
+                    'api-subscription-key': apiKey,
+                    // axios sets multipart/form-data automatically 
+                }
+            }
+        );
+
+        const text = response.data?.transcript || '';
+        if (text.trim()) {
+            onTranscript(text.trim());
+        }
+    } catch (err) {
+        console.error("[Voice] Sarvam STT Error:", err?.response?.data || err.message);
+    }
+  };
+
   const startListening = useCallback(async () => {
-    if (!isSupported) {
-      alert('Voice input requires Chrome, Edge, or Safari.');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Microphone not supported in this browser.');
       return;
     }
 
-    // Stop completely before starting
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-    }
-    stopWaveform();
-
-    // 1. First set up Speech Recognition
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const r = new SR();
-    recognitionRef.current = r;
-
-    r.lang = LOCALE_MAP[languageCode] || 'en-IN';
-    r.continuous = true; // KEEP continuous true so it doesn't stop immediately!
-    r.interimResults = true;
-    r.maxAlternatives = 1;
-
-    let finalTranscriptBuf = '';
-
-    r.onstart = () => {
-      setIsListening(true);
-      setInterim('');
-    };
-
-    r.onresult = (e) => {
-      let interimBuf = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const text = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          finalTranscriptBuf += text + ' ';
-        } else {
-          interimBuf += text;
-        }
-      }
-      setInterim(interimBuf);
-    };
-
-    r.onerror = (e) => {
-      console.warn('Voice error:', e.error);
-      if (e.error === 'not-allowed') {
-        alert('Microphone access denied.');
-      }
-      // Don't auto-stop on minor errors like 'no-speech'
-      if (e.error === 'not-allowed' || e.error === 'network' || e.error === 'aborted') {
-        setIsListening(false);
-        stopWaveform();
-      }
-    };
-
-    r.onend = () => {
-      setIsListening(false);
-      stopWaveform();
-      if (finalTranscriptBuf.trim()) {
-        onTranscript(finalTranscriptBuf.trim());
-      } else if (interim.trim()) {
-        // Fallback to whatever was caught interim
-        onTranscript(interim.trim());
-      }
-      setInterim('');
-    };
-
     try {
-      // Use fallback visualizer to avoid mic collisions with SpeechRecognition
-      animRef.current = setInterval(() => {
-        if (!isListening && !recognitionRef.current) return;
-        setWaveData([
-          Math.random()*20+10, 
-          Math.random()*30+15, 
-          Math.random()*40+20, 
-          Math.random()*30+15, 
-          Math.random()*20+10
-        ]);
-      }, 150);
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+        
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
 
-      r.start();
-    } catch (e) {
-      console.error('Failed to start recognition:', e);
-      setIsListening(false);
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunksRef.current.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            setIsListening(false);
+            stopWaveform();
+            
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+            if (audioBlob.size > 0) {
+                await processAudio(audioBlob);
+            }
+        };
+
+        // Fallback visualizer animation
+        animRef.current = setInterval(() => {
+            if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
+            setWaveData([
+                Math.random() * 20 + 10, 
+                Math.random() * 30 + 15, 
+                Math.random() * 40 + 20, 
+                Math.random() * 30 + 15, 
+                Math.random() * 20 + 10
+            ]);
+        }, 150);
+
+        mediaRecorder.start();
+        setIsListening(true);
+    } catch (err) {
+        console.error('[Voice] Failed to start microphone:', err);
+        setIsListening(false);
     }
-  }, [isSupported, languageCode, stopWaveform, onTranscript, interim, isListening]);
+  }, [onTranscript, stopWaveform]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
     }
-    // onend will handle the cleanup and submission
   }, []);
 
-  return { isListening, startListening, stopListening, interim, waveData, isSupported };
+  const isSupported = true; // MediaRecorder is widely supported
+
+  return { isListening, startListening, stopListening, interim: '', waveData, isSupported };
 };

@@ -1,131 +1,108 @@
 import { useState, useCallback, useRef } from 'react';
+import axios from 'axios';
 
-// Voice profiles — tuned for warmth in each language
-const VOICE_PROFILES = {
-  'en': { locale: 'en-IN', pitch: 1.08, rate: 0.88, preferGoogle: true },
-  'hi': { locale: 'hi-IN', pitch: 1.05, rate: 0.84, preferGoogle: true },
-  'ta': { locale: 'ta-IN', pitch: 1.03, rate: 0.82, preferGoogle: true },
-  'te': { locale: 'te-IN', pitch: 1.03, rate: 0.82, preferGoogle: true },
-  'kn': { locale: 'kn-IN', pitch: 1.03, rate: 0.82, preferGoogle: true },
+// Map our app's language codes to Sarvam's expected codes
+// Sarvam supports: hi-IN, bn-IN, kn-IN, ml-IN, mr-IN, od-IN, pa-IN, ta-IN, te-IN, en-IN, gu-IN
+const SARVAM_LANG_MAP = {
+  'en': 'en-IN',
+  'hi': 'hi-IN',
+  'ta': 'ta-IN',
+  'te': 'te-IN',
+  'kn': 'kn-IN',
 };
 
-// Strip ALL emojis so TTS doesn't read them as "moon emoji" etc.
+// Strip ALL emojis so TTS doesn't read them
 const stripEmojis = (text) =>
   text.replace(/[\u{1F600}-\u{1F9FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u{1FA00}-\u{1FAFF}\u{2702}-\u{27B0}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '')
   .replace(/\s{2,}/g, ' ')
   .trim();
 
-// Split into sentences for natural pauses
-const splitSentences = (text) => {
-  return text
-    .split(/(?<=[.!?।])\s+/)
-    .filter((s) => s.trim().length > 0);
-};
-
 export const useTTS = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const queueRef = useRef([]);
-  const activeRef = useRef(null);
-
-  // Get voices — waits for Chrome lazy load
-  const getVoices = useCallback(() => {
-    return new Promise((resolve) => {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) { resolve(voices); return; }
-      window.speechSynthesis.onvoiceschanged = () => resolve(window.speechSynthesis.getVoices());
-      setTimeout(() => resolve(window.speechSynthesis.getVoices()), 1200);
-    });
-  }, []);
-
-  // Find the best voice — prioritize Google voices (much more natural)
-  const findBestVoice = useCallback((voices, locale) => {
-    const langPrefix = locale.split('-')[0];
-
-    // Priority 1: Google voice matching exact locale
-    const googleExact = voices.find((v) => v.lang === locale && v.name.toLowerCase().includes('google'));
-    if (googleExact) return googleExact;
-
-    // Priority 2: Google voice matching language prefix
-    const googlePrefix = voices.find((v) => v.lang.startsWith(langPrefix) && v.name.toLowerCase().includes('google'));
-    if (googlePrefix) return googlePrefix;
-
-    // Priority 3: Any Google voice for the language
-    const googleAny = voices.find((v) => v.lang.startsWith(langPrefix) && (v.name.includes('Google') || v.name.includes('online')));
-    if (googleAny) return googleAny;
-
-    // Priority 4: Any voice matching locale exactly
-    const exact = voices.find((v) => v.lang === locale);
-    if (exact) return exact;
-
-    // Priority 5: Any voice matching language prefix
-    const prefix = voices.find((v) => v.lang.startsWith(langPrefix));
-    if (prefix) return prefix;
-
-    // Priority 6: Any English voice as final fallback
-    return voices.find((v) => v.lang.startsWith('en')) || voices[0];
-  }, []);
+  const audioRef = useRef(null);
 
   const speak = useCallback(async (text, languageCode, onFinish) => {
-    if (!window.speechSynthesis || !text) return;
-    window.speechSynthesis.cancel();
-    queueRef.current = [];
-
-    const profile = VOICE_PROFILES[languageCode] || VOICE_PROFILES['en'];
-    const voices = await getVoices();
-    const voice = findBestVoice(voices, profile.locale);
-
-    if (import.meta.env.DEV) {
-      console.log('[TTS] Using voice:', voice?.name, voice?.lang);
+    if (!text) return;
+    
+    // Stop any currently playing audio
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
     }
 
-    // Strip emojis first, then split into sentences
     const cleanText = stripEmojis(text);
     if (!cleanText) return;
-    const sentences = splitSentences(cleanText);
-    if (sentences.length === 0) return;
 
     setIsSpeaking(true);
 
-    const speakNext = (index) => {
-      if (index >= sentences.length) {
+    try {
+      const apiKey = import.meta.env.VITE_SARVAM_API_KEY;
+      if (!apiKey) {
+        console.warn("[TTS] Missing VITE_SARVAM_API_KEY");
         setIsSpeaking(false);
         if (onFinish) onFinish();
         return;
       }
 
-      const utter = new SpeechSynthesisUtterance(sentences[index]);
-      if (voice) utter.voice = voice;
-      utter.lang = profile.locale;
-      utter.pitch = profile.pitch;
-      utter.rate = profile.rate;
-      utter.volume = 1;
+      const response = await axios.post(
+        'https://api.sarvam.ai/text-to-speech',
+        {
+          inputs: [cleanText],
+          target_language_code: SARVAM_LANG_MAP[languageCode] || 'hi-IN',
+          speaker: 'meera', // Female voice, sounds warm
+          pitch: 0,
+          pace: 1.05, // slightly faster for natural feel
+          loudness: 1.5,
+          speech_sample_rate: 24000,
+          enable_preprocessing: true,
+          model: 'bulbul:v1'
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'api-subscription-key': apiKey
+          }
+        }
+      );
 
-      // Small pause between sentences for natural rhythm
-      utter.onend = () => {
-        setTimeout(() => speakNext(index + 1), 180);
+      const base64Audio = response.data?.audios?.[0];
+      if (!base64Audio) {
+          throw new Error("No audio returned from Sarvam");
+      }
+
+      const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+          setIsSpeaking(false);
+          audioRef.current = null;
+          if (onFinish) onFinish();
       };
-      utter.onerror = (e) => {
-        console.warn('[TTS] error:', e.error);
-        setIsSpeaking(false);
-        if (onFinish) onFinish();
+      
+      audio.onerror = (e) => {
+          console.error("[TTS] Audio playback error", e);
+          setIsSpeaking(false);
+          if (onFinish) onFinish();
       };
 
-      activeRef.current = utter;
-      // Chrome bug: must wait 50ms after cancel before speak
-      setTimeout(() => window.speechSynthesis.speak(utter), index === 0 ? 60 : 10);
-    };
+      await audio.play();
 
-    speakNext(0);
-  }, [getVoices, findBestVoice]);
+    } catch (error) {
+      console.error('[TTS] Sarvam TTS Error:', error?.response?.data || error.message);
+      setIsSpeaking(false);
+      if (onFinish) onFinish();
+    }
+  }, []);
 
   const stop = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    queueRef.current = [];
-    activeRef.current = null;
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+    }
     setIsSpeaking(false);
   }, []);
 
-  const isSupported = typeof window !== 'undefined' && Boolean(window.speechSynthesis);
+  const isSupported = true; // API-based, so always supported if online
 
   return { speak, stop, isSpeaking, isSupported };
 };
